@@ -79,8 +79,6 @@ select:disabled,input:disabled{background:#f1f3f5;color:var(--gray);cursor:not-a
 .card:hover{transform:none;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .card .details{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;text-align:left}
 .value{font-size:40px;font-weight:700;color:var(--navy)}
-#supervisorSummaryCards,
-#dailyOverviewCards{display:grid;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;align-items:start}
 
 /* ---------- Dashboard stat cards ---------- */
 .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start;margin:0 0 10px}
@@ -173,6 +171,40 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f2a4d;color:#fff;padding:9px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
 #toast.show{opacity:1}
 
+/* ---------- Attendance tracker ---------- */
+.st-present{background:#e8f5e9;color:#2e7d32}
+.st-upcoming{background:#e3f2fd;color:#1565c0}
+.st-absent{background:#ffebee;color:#c62828}
+.st-partial{background:#fff3e0;color:#e65100}
+.st-leave{background:#e0f7fa;color:#00838f}
+.st-off{background:#f1f2f4;color:#757575}
+.trk-legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;font-size:12px}
+.trk-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap}
+.trk-chip.info{background:#eef6ff;color:var(--navy)}
+.trk-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
+.trk-title{font-size:18px;font-weight:700;color:var(--navy);margin-right:8px}
+.trk-title small{font-size:13px;font-weight:400;color:var(--muted)}
+.trk-table th{cursor:default}
+.trk-table th::after{content:none}
+.trk-grid{border-collapse:separate;border-spacing:0}
+.trk-grid th,.trk-grid td{padding:6px 4px;text-align:center;font-size:12px;white-space:nowrap}
+.trk-grid th:first-child,.trk-grid td:first-child{position:sticky;left:0;z-index:2;background:#fff;text-align:left;min-width:170px;padding-left:10px}
+.trk-grid thead th:first-child{z-index:12}
+.trk-grid td.trk-name{cursor:pointer;font-weight:600;color:var(--navy)}
+.trk-grid td.trk-name:hover{text-decoration:underline}
+.trk-grid th.today{background:#fff3cd;color:#8a6100}
+.trk-grid td.trk-cell{min-width:34px;font-weight:700}
+.trk-grid .trk-sum{background:#fafbfc;font-weight:600;min-width:46px}
+.trk-grid th.sortable{cursor:pointer;user-select:none}
+.trk-grid th.sortable:hover{background:#eef6ff;color:var(--navy)}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal-dow{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:center;padding:4px 0}
+.cal-day{min-height:92px;border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;gap:2px;font-size:12px}
+.cal-day.is-today{box-shadow:0 0 0 2px var(--blue)}
+.cal-num{font-weight:700;font-size:13px}
+.cal-status{font-weight:700}
+.cal-shift,.cal-note{font-size:11px;opacity:.85}
+
 /* ---------- Responsive ---------- */
 @media(max-width:980px){
   .panels{grid-template-columns:1fr 1fr}
@@ -212,7 +244,12 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
         <a href="#" data-tab="scheduleTab">Daily view</a>
         <a href="#" data-tab="rosterTab">Weekly view</a>
       </div></div>
-    <div class="dropdown"><button class="tab-btn" data-tab="ptoTab">PTO</button></div>
+    <div class="dropdown"><button class="tab-btn">Attendance ▾</button>
+      <div class="dropdown-content">
+        <a href="#" data-tab="ptoTab">Leaves</a>
+        <a href="#" data-tab="calledOffTab">Absenteeism</a>
+        <a href="#" data-tab="trackerTab">Attendance tracker</a>
+      </div></div>
     <div class="dropdown"><button class="tab-btn" data-tab="missingTab">Missing Agent Checker</button></div>
   </nav>
 
@@ -239,7 +276,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <div class="card stat" style="--c:#ff9800" data-tab="scheduleTab"><h3>☕ Break</h3><div class="value" id="breakCount">0</div><div class="pct" id="breakPercent">0%</div></div>
     <div class="card stat" style="--c:#dc3545" data-tab="scheduleTab"><h3>🍽️ Lunch</h3><div class="value" id="lunchCount">0</div><div class="pct" id="lunchPercent">0%</div></div>
     <div class="card stat" style="--c:#17a2b8" data-tab="ptoTab"><h3>🗓️ Leave</h3><div class="value" id="ptoCount">0</div><div class="pct" id="ptoPercent">0%</div></div>
-    <div class="card stat" style="--c:#dc3545"><h3>🚫 Absent</h3><div class="value" id="calledOffCount">0</div><div class="pct" id="attendancePercent">0%</div></div>
+    <div class="card stat" style="--c:#dc3545" data-tab="calledOffTab"><h3>🚫 Absent</h3><div class="value" id="calledOffCount">0</div><div class="pct" id="attendancePercent">0%</div></div>
   </div>
 
   <div class="panels">
@@ -363,6 +400,44 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   </div>
 </section>
 
+<!-- ============ ABSENTEEISM ============ -->
+<section class="tab-panel" id="calledOffTab" hidden>
+  <div class="view-hint">🚦 Displays attendance exceptions including call-outs, NCNS, late arrivals, and early departures.</div>
+  <div class="controls">
+    <input type="date" id="calledOffDate" onchange="buildRecordTable('att')">
+    <select id="calledOffSupervisor" onchange="buildRecordTable('att')"><option>All Supervisors</option></select>
+    <button onclick="buildRecordTable('att')">Show Called Off</button>
+    <button onclick="clearRecordDate('att')">All Dates</button>
+    <input type="text" id="calledOffSearch" placeholder="🔍 Search Agent..." onkeyup="buildRecordTable('att')">
+  </div>
+  <div class="panel">
+    <h2>Called Off List</h2>
+    <div class="schedule-container">
+      <table id="calledOffTable"><thead></thead><tbody></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ATTENDANCE TRACKER ============ -->
+<section class="tab-panel" id="trackerTab" hidden>
+  <div class="view-hint">🗓️ Per-agent attendance for the month: ✔ present, ◐ late / left early (counted by hours worked; marked * when no actual time is submitted yet and a half shift is assumed), ✖ called off, leave or OFF. Click an agent's name in the grid to open their calendar.</div>
+  <div class="controls">
+    <button type="button" onclick="shiftTrackerMonth(-1)" title="Previous month">‹</button>
+    <input type="month" id="trackerMonth" onchange="buildTracker()">
+    <button type="button" onclick="shiftTrackerMonth(1)" title="Next month">›</button>
+    <select id="trackerView" onchange="buildTracker()">
+      <option value="grid">All agents (grid)</option>
+      <option value="calendar">Agent calendar</option>
+      <option value="list">Agent list</option>
+    </select>
+    <select id="trackerSupervisor" onchange="buildTracker()"><option>All Supervisors</option></select>
+    <select id="trackerAgent" onchange="buildTracker()"></select>
+    <input type="text" id="trackerSearch" placeholder="🔍 Search Agent..." onkeyup="buildTracker()">
+  </div>
+  <div class="trk-legend" id="trackerLegend"></div>
+  <div id="trackerBody"></div>
+</section>
+
 <!-- ============ MISSING AGENT CHECKER ============ -->
 <section class="tab-panel" id="missingTab" hidden>
   <div class="view-hint">🔎 Compare CXone activity against your Dashboard Working list to identify missing or unexpected agents.</div>
@@ -401,6 +476,7 @@ const sheetUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz
 const URLS = {
   pto: sheetUrl(1297010746),
   calledOff: sheetUrl(2139820898),
+  attTime: sheetUrl(417537234),            // "ATTENDANCE TIME" tab: Name | EST Date | Type | Actual Time
   daily: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&gid=1383082920`          // "Schedule By Date" tab
 };
 
@@ -451,7 +527,7 @@ const ATT_OTHER = { code: 'CO', icon: '🚫', color: '#dc3545', label: 'Called O
    STATE
    ===================================================================== */
 let estData = [], phData = [];
-let ptoList = [], calledOffList = [];
+let ptoList = [], calledOffList = [], attTimeList = [];
 let dailyMap = new Map();
 let currentWorkingAgents = [];
 let realtimeMode = false, realtimeTimer = null;
@@ -460,7 +536,8 @@ let activeTab = 'lookupTab';
 const sortState = {
   schedule: { col: '', asc: true },
   roster:   { col: '', asc: true },
-  pto:      { col: '', asc: true }
+  pto:      { col: '', asc: true },
+  att:      { col: '', asc: true }
 };
 
 /* =====================================================================
@@ -568,7 +645,7 @@ function sortBy(view, col) {
   const s = sortState[view];
   s.asc = s.col === col ? !s.asc : true;
   s.col = col;
-  ({ schedule: buildScheduleView, roster: buildRosterView, pto: () => buildRecordTable('pto') })[view]();
+  ({ schedule: buildScheduleView, roster: buildRosterView, pto: () => buildRecordTable('pto'), att: () => buildRecordTable('att') })[view]();
 }
 
 /* =====================================================================
@@ -617,9 +694,10 @@ function renderStatus() {
 
 async function loadAttendance() {
   try {
-    [ptoList, calledOffList] = await Promise.all([
+    [ptoList, calledOffList, attTimeList] = await Promise.all([
       loadSheet(URLS.pto),
-      loadSheet(URLS.calledOff)
+      loadSheet(URLS.calledOff),
+      loadSheet(URLS.attTime).catch(() => [])      // if this tab fails, everything else keeps working
     ]);
     loadErrors.attendance = '';
     lastUpdated = new Date();
@@ -744,7 +822,9 @@ const TAB_RENDERERS = {
   lookupTab: runLookup,
   scheduleTab: buildScheduleView,
   rosterTab: buildRosterView,
-  ptoTab: () => buildRecordTable('pto')
+  ptoTab: () => buildRecordTable('pto'),
+  calledOffTab: () => buildRecordTable('att'),
+  trackerTab: buildTracker
 };
 
 function renderAll() {
@@ -755,7 +835,7 @@ function renderAll() {
 
 function loadSup() {
   const options = `<option>${ALL}</option>` + uniqueSupervisors().map(s => `<option>${esc(s)}</option>`).join('');
-  ['supervisor', 'scheduleSupervisor', 'ptoSupervisor', 'rosterSupervisor']
+  ['supervisor', 'scheduleSupervisor', 'ptoSupervisor', 'calledOffSupervisor', 'rosterSupervisor', 'trackerSupervisor']
     .forEach(id => {
       const el = $(id), prev = el.value;
       el.innerHTML = options;
@@ -782,7 +862,7 @@ function toggleRealtime() {
 
 function updateRealtime() {
   const now = estNow(), today = ymd(now);
-  ['selectedDate', 'ptoDate', 'scheduleDate'].forEach(id => $(id).value = today);
+  ['selectedDate', 'ptoDate', 'calledOffDate', 'scheduleDate'].forEach(id => $(id).value = today);
   $('interval').value = `${pad(now.getHours())}:${now.getMinutes() >= 30 ? '30' : '00'}`;
   renderAll();
 }
@@ -1057,7 +1137,8 @@ function buildRosterView() {
    ===================================================================== */
 const RECORD_COLS = { 'Name': '👤 Agent Name', 'EST Date': '📅 Date', 'Reason': '🚦 Reason', 'Supervisor': '🧑‍💼 Supervisor' };
 const RECORD_VIEWS = {
-  pto: { table: 'ptoTable',      list: () => ptoList,       sup: 'ptoSupervisor',      date: 'ptoDate',      search: 'ptoSearch',      empty: 'No PTO records found' }
+  pto: { table: 'ptoTable',       list: () => ptoList,       sup: 'ptoSupervisor',       date: 'ptoDate',       search: 'ptoSearch',       empty: 'No PTO records found' },
+  att: { table: 'calledOffTable', list: () => calledOffList, sup: 'calledOffSupervisor', date: 'calledOffDate', search: 'calledOffSearch', empty: 'No Called Off records found' }
 };
 
 function buildRecordTable(kind) {
@@ -1198,6 +1279,310 @@ function buildShiftChanges(date, mins, supFilter) {
 }
 
 /* =====================================================================
+   LATE / LEFT EARLY HELPERS (used by the Attendance tracker)
+   ===================================================================== */
+/* Signed minutes between two clock times, safe across midnight */
+const clockDiff = (a, b) => { let d = a - b; if (d > 720) d -= 1440; if (d < -720) d += 1440; return d; };
+
+/* One entry per agent + shift date: the latest login and the latest logout */
+function timeEntries() {
+  const g = new Map();
+  attTimeList.forEach(x => {
+    const date = normalizeDate(x['EST Date']);
+    if (!date) return;
+    const k = normName(x.Name) + '|' + date;
+    const o = g.get(k) || { name: x.Name, date, login: '', logout: '' };
+    const type = up(x.Type);
+    if (type.includes('LOGOUT') || type.includes('LEFT')) o.logout = x['Actual Time'];
+    else o.login = x['Actual Time'];
+    g.set(k, o);
+  });
+  return g;
+}
+
+/* =====================================================================
+   ATTENDANCE TRACKER
+   Every scheduled day of the month is classified for each agent:
+   OFF > Leave (PTO record) > Late / Left early (worked part of the shift)
+   > Called off / NCNS > Present (day passed) or Upcoming (today / future).
+   Attendance % = hours worked / hours expected (shift length, 11h by default).
+   Late / Left early minutes come from the ATTENDANCE TIME tab:
+   late = actual login - shift start, left early = shift end - actual logout.
+   Without a time entry, a Running Late / Left Early record counts as a half shift
+   missed (estimated, marked *) until the actual times are submitted.
+   ===================================================================== */
+const SHIFT_HOURS_DEFAULT = 11;
+function shiftHours(shift) {
+  const p = parseShift(shift);
+  if (!p) return SHIFT_HOURS_DEFAULT;
+  return (p[1] <= p[0] ? p[1] + 1440 - p[0] : p[1] - p[0]) / 60;
+}
+
+const TRACKER_STATUS = {
+  present:  { icon: '✔', label: 'Present' },
+  upcoming: { icon: '○', label: 'Upcoming' },
+  partial:  { icon: '◐', label: 'Late / Left early' },
+  absent:   { icon: '✖', label: 'Called off' },
+  leave:    { icon: '🌴', label: 'Leave' },
+  off:      { icon: '–', label: 'OFF' }
+};
+const TRACKER_LEGEND = [
+  ['present', '✔ Present (expected day, no record)'], ['upcoming', '○ Upcoming (today / future)'],
+  ['partial', '◐ Late / Left early (worked, partial shift; * = estimated half shift)'],
+  ['absent', '✖ Called off / NCNS'], ['leave', '🌴 Leave (VL, SL, ...)'], ['off', '– OFF']
+];
+
+function indexRecords(list) {
+  const m = new Map();
+  list.forEach(x => {
+    const k = normName(x.Name) + '|' + normalizeDate(x['EST Date']);
+    if (!m.has(k)) m.set(k, x);
+  });
+  return m;
+}
+
+/* Attendance records + the ATTENDANCE TIME entries. A time entry marks the day as Late / Left early. */
+function indexAttendance(list, timeList) {
+  const m = indexRecords(list);
+  timeEntries().forEach((t, k) => {
+    m.set(k, {
+      ...(m.get(k) || {}),
+      Name: t.name,
+      Reason: t.login && t.logout ? 'Running Late + Left Early' : t.login ? 'Running Late' : 'Left Early',
+      loginTime: t.login,
+      logoutTime: t.logout
+    });
+  });
+  return m;
+}
+
+function attendanceBase(r, date, today, idx) {
+  const shift = shiftFor(r, date);
+  const key = normName(r.Name) + '|' + date;
+
+  const pto = idx.pto.get(key);
+  if (pto) {
+    const t = matchType(PTO_TYPES, pto.Reason, { ...PTO_OTHER, label: pto.Reason || 'Leave' });
+    return { kind: 'leave', date, shift, text: t.label, code: t.code, icon: t.icon, reason: pto.Reason || '' };
+  }
+
+  const co = idx.att.get(key);
+  if (co) {
+    const t = matchType(ATT_TYPES, co.Reason, ATT_OTHER);
+    return { kind: t.partial ? 'partial' : 'absent', date, shift, text: t.label, code: t.code, icon: t.icon, reason: co.Reason || '' };
+  }
+
+  if (isOff(shift)) {
+    return { kind: 'off', date, shift: '', text: 'OFF', code: '–', icon: '–', reason: '' };
+  }
+
+  const kind = date < today ? 'present' : 'upcoming';
+  const s = TRACKER_STATUS[kind];
+  return { kind, date, shift, text: s.label, code: s.icon, icon: s.icon, reason: '' };
+}
+
+/* Adds minutes missed, hours expected and hours worked to each day */
+function attendanceFor(r, date, today, idx) {
+  const x = attendanceBase(r, date, today, idx);
+  const exp = shiftHours(x.shift);
+  const rec = idx.att.get(normName(r.Name) + '|' + date);
+
+  x.missed = 0;
+  x.estimated = false;
+  x.inTime = rec?.loginTime || '';
+  x.outTime = rec?.logoutTime || '';
+  if (x.kind === 'partial') {
+    const p = parseShift(x.shift);
+    const inT = parseClock(x.inTime), outT = parseClock(x.outTime);
+    if (inT == null && outT == null) {
+      // No time submitted yet: assume half the shift was missed
+      x.missed = Math.round(exp * 60 / 2);
+      x.estimated = true;
+    } else {
+      // Actual times submitted: use them
+      if (p && inT != null)  x.missed += Math.max(0, clockDiff(inT, p[0]));
+      if (p && outT != null) x.missed += Math.max(0, clockDiff(p[1], outT));
+    }
+  }
+
+  x.exp = ['present', 'partial', 'absent'].includes(x.kind) ? exp : 0;      // leave, OFF and upcoming are excluded
+  x.worked = x.kind === 'present' ? exp
+           : x.kind === 'partial' ? Math.max(0, exp - x.missed / 60) : 0;
+  return x;
+}
+
+function trackerSummary(info) {
+  const c = { present: 0, upcoming: 0, absent: 0, partial: 0, leave: 0, off: 0 };
+  info.forEach(x => c[x.kind]++);
+  c.expected = c.present + c.upcoming + c.absent + c.partial + c.leave;
+  c.hoursExp = info.reduce((s, x) => s + x.exp, 0);
+  c.hoursWorked = info.reduce((s, x) => s + x.worked, 0);
+  c.pct = c.hoursExp ? (c.hoursWorked / c.hoursExp) * 100 : null;
+  return c;
+}
+const trackerPct = c => c.pct == null ? '—' : c.pct.toFixed(1) + '%';
+
+/* "120 min missed" or "330 min missed (est. half shift)" */
+const missedText = x => x.missed ? `${x.missed} min missed${x.estimated ? ' (est. half shift)' : ''}` : '';
+
+const trackerTip = x =>
+  `${fmtDate(parseYMD(x.date), { weekday: 'short', month: 'short', day: 'numeric' })} · ${x.text}` +
+  (x.reason && up(x.reason) !== up(x.text) ? ` (${x.reason})` : '') +
+  (x.shift ? ` · ${convertShiftRange(x.shift)}` : '') +
+  (x.missed ? ` · ${missedText(x)}` : '') +
+  (x.inTime ? ` · login ${x.inTime}` : '') + (x.outTime ? ` · logout ${x.outTime}` : '');
+
+function trackerHeaderHtml(r, info) {
+  const c = trackerSummary(info);
+  const chip = (k, label, n) => `<span class="trk-chip st-${k}">${TRACKER_STATUS[k].icon} ${label}: ${n}</span>`;
+  return `<div class="trk-head">
+    <div class="trk-title">${esc(r.Name)} <small>· ${esc(r.Supervisor || 'Unassigned')}</small></div>
+    <span class="trk-chip info">🗓️ Expected days: ${c.expected}</span>
+    ${chip('present', 'Present', c.present)}${chip('partial', 'Late/LE', c.partial)}${chip('absent', 'Called off', c.absent)}${chip('leave', 'Leave', c.leave)}${chip('off', 'OFF', c.off)}
+    <span class="trk-chip info">📊 Attendance: ${trackerPct(c)}</span>
+    <span class="trk-chip info">⏱ Hours: ${c.hoursWorked.toFixed(1)} / ${c.hoursExp.toFixed(1)}</span>
+  </div>`;
+}
+
+/* % column sort: '' = by name, 'asc' = lowest first, 'desc' = highest first */
+let trackerPctSort = '';
+function toggleTrackerPctSort() {
+  trackerPctSort = trackerPctSort === '' ? 'asc' : trackerPctSort === 'asc' ? 'desc' : '';
+  buildTracker();
+}
+
+function trackerGridHtml(rows, monthOf, days, today) {
+  if (!rows.length) return '<div class="empty" style="--c:#6c757d">No agents found</div>';
+
+  if (trackerPctSort) {
+    const dir = trackerPctSort === 'asc' ? 1 : -1;
+    const pctOf = r => trackerSummary(monthOf(r)).pct;
+    rows = rows
+      .map(r => ({ r, p: pctOf(r) }))
+      .sort((a, b) => {
+        if (a.p == null && b.p == null) return a.r.Name.localeCompare(b.r.Name);
+        if (a.p == null) return 1;                 // agents with no % go last
+        if (b.p == null) return -1;
+        return dir * (a.p - b.p) || a.r.Name.localeCompare(b.r.Name);
+      })
+      .map(x => x.r);
+  }
+  const sortArrow = trackerPctSort === 'asc' ? ' ▲' : trackerPctSort === 'desc' ? ' ▼' : ' ↕';
+  const dow = 'SMTWTFS';
+  const head = days.map(d => {
+    const dt = parseYMD(d);
+    return `<th class="${d === today ? 'today' : ''}">${dt.getDate()}<br><small>${dow[dt.getDay()]}</small></th>`;
+  }).join('');
+
+  const body = rows.map(r => {
+    const info = monthOf(r), c = trackerSummary(info);
+    const cells = info.map(x => `<td class="trk-cell st-${x.kind}" title="${esc(trackerTip(x))}">${esc(x.code)}${x.estimated ? '*' : ''}</td>`).join('');
+    return `<tr class="${supClass(r.Supervisor)}" style="${supStyle(r.Supervisor)}">
+      <td class="trk-name" data-agent="${esc(r.Name)}" title="Open calendar">${esc(r.Name)}</td>
+      <td class="trk-sum" title="Expected days">${c.expected}</td>
+      <td class="trk-sum" title="Present">${c.present}</td>
+      <td class="trk-sum" title="Late / Left early">${c.partial}</td>
+      <td class="trk-sum" title="Called off / NCNS">${c.absent}</td>
+      <td class="trk-sum" title="Leave">${c.leave}</td>
+      <td class="trk-sum" title="Hours worked / hours expected">${trackerPct(c)}</td>
+      ${cells}</tr>`;
+  }).join('');
+
+  return `<div class="panel"><div class="schedule-container"><table class="trk-table trk-grid">
+    <thead><tr><th>👤 Agent</th><th title="Expected days">Exp</th><th title="Present">✔</th><th title="Late / Left early">◐</th><th title="Called off / NCNS">✖</th><th title="Leave">🌴</th><th class="sortable" onclick="toggleTrackerPctSort()" title="Click to sort by attendance % (lowest first, highest first, then by name)">%${sortArrow}</th>${head}</tr></thead>
+    <tbody>${body}</tbody></table></div></div>`;
+}
+
+function trackerCalendarHtml(info, today) {
+  const lead = (parseYMD(info[0].date).getDay() + 6) % 7;
+  const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+  const cells = info.map(x => {
+    const showText = ['absent', 'leave', 'partial'].includes(x.kind) ? x.text : TRACKER_STATUS[x.kind].label;
+    const note = x.missed
+      ? `<div class="cal-note">${missedText(x)}</div>`
+      : (x.reason && up(x.reason) !== up(x.text) ? `<div class="cal-note">${esc(x.reason)}</div>` : '');
+    return `<div class="cal-day st-${x.kind}${x.date === today ? ' is-today' : ''}" title="${esc(trackerTip(x))}">
+      <div class="cal-num">${parseYMD(x.date).getDate()}</div>
+      <div class="cal-status">${x.icon} ${esc(showText)}</div>
+      ${x.shift ? `<div class="cal-shift">${convertShiftRange(x.shift)}</div>` : ''}${note}</div>`;
+  }).join('');
+  return `<div class="panel"><div class="cal">${dows}${'<div></div>'.repeat(lead)}${cells}</div></div>`;
+}
+
+function trackerListHtml(info) {
+  const rows = info.map(x => {
+    const dt = parseYMD(x.date);
+    const sched = x.kind === 'off' ? 'OFF' : `Expected · ${convertShiftRange(x.shift)}`;
+    const showText = ['absent', 'leave', 'partial'].includes(x.kind) ? x.text : TRACKER_STATUS[x.kind].label;
+    const att = x.kind === 'off' ? '–' : `<span class="trk-chip st-${x.kind}">${x.icon} ${esc(showText)}</span>`;
+    const details = [x.reason, missedText(x),
+                     x.inTime ? `login ${x.inTime}` : '', x.outTime ? `logout ${x.outTime}` : ''].filter(Boolean).join(' · ');
+    return `<tr class="${x.kind === 'off' ? 'roster-off' : ''}">
+      <td>${fmtDate(dt, { month: 'long', day: 'numeric' })}</td><td>${DAYS[dt.getDay()]}</td>
+      <td>${sched}</td><td>${att}</td><td>${esc(details)}</td></tr>`;
+  }).join('');
+  return `<div class="panel"><div class="schedule-container"><table class="trk-table">
+    <thead><tr><th>📅 Date</th><th>Day</th><th>🗓️ Schedule</th><th>🚦 Attendance</th><th>📝 Details</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function buildTracker() {
+  const body = $('trackerBody');
+  $('trackerLegend').innerHTML = TRACKER_LEGEND.map(([k, t]) => `<span class="trk-chip st-${k}">${t}</span>`).join('');
+
+  const ym = $('trackerMonth').value;
+  if (!ym || !estData.length) {
+    body.innerHTML = '<div class="empty" style="--c:#6c757d">Pick a month (schedule data must be loaded)</div>';
+    return;
+  }
+  const [y, m] = ym.split('-').map(Number);
+  const days = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
+  const today = ymd(estNow());
+  const view = $('trackerView').value;
+  const sup = $('trackerSupervisor').value;
+  const q = up($('trackerSearch').value);
+
+  const roster = estData
+    .filter(r => sup === ALL || r.Supervisor === sup)
+    .sort((a, b) => a.Name.localeCompare(b.Name));
+
+  const sel = $('trackerAgent'), prev = sel.value;
+  sel.innerHTML = roster.map(r => `<option value="${esc(r.Name)}">${esc(r.Name)}</option>`).join('');
+  if (roster.some(r => r.Name === prev)) sel.value = prev;
+  sel.disabled = view === 'grid';
+  $('trackerSearch').disabled = view !== 'grid';
+
+  const idx = { pto: indexRecords(ptoList), att: indexAttendance(calledOffList, attTimeList) };
+  const monthOf = r => days.map(date => attendanceFor(r, date, today, idx));
+
+  if (view === 'grid') {
+    body.innerHTML = trackerGridHtml(roster.filter(r => !q || up(r.Name).includes(q)), monthOf, days, today);
+    return;
+  }
+  const agent = roster.find(r => r.Name === sel.value) || roster[0];
+  if (!agent) { body.innerHTML = '<div class="empty" style="--c:#6c757d">No agents found</div>'; return; }
+  const info = monthOf(agent);
+  body.innerHTML = trackerHeaderHtml(agent, info) + (view === 'calendar' ? trackerCalendarHtml(info, today) : trackerListHtml(info));
+}
+
+function shiftTrackerMonth(delta) {
+  const [y, m] = ($('trackerMonth').value || ymd(estNow()).slice(0, 7)).split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  $('trackerMonth').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  buildTracker();
+}
+
+function initTracker() {
+  $('trackerBody').addEventListener('click', e => {
+    const cell = e.target.closest('[data-agent]');
+    if (!cell) return;
+    $('trackerView').value = 'calendar';
+    $('trackerAgent').value = cell.dataset.agent;
+    buildTracker();
+  });
+}
+
+/* =====================================================================
    MENUS + TOAST
    ===================================================================== */
 function initMenus() {
@@ -1234,10 +1619,12 @@ window.addEventListener('load', async () => {
   buildIntervalOptions();
   initMinTarget();
   initMenus();
+  initTracker();
 
   const today = ymd(estNow());
-  ['selectedDate', 'ptoDate', 'scheduleDate']
+  ['selectedDate', 'ptoDate', 'calledOffDate', 'scheduleDate']
     .forEach(id => $(id).value = today);
+  $('trackerMonth').value = today.slice(0, 7);
 
   await Promise.all([loadSchedules(), loadAttendance(), loadDaily()]);
   renderAll();
