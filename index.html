@@ -247,6 +247,9 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #mcsTable th{white-space:normal;text-align:center;vertical-align:bottom}
 #mcsTable td{text-align:center;white-space:nowrap}
 #mcsTable td:first-child{text-align:left;font-weight:600}
+#mcsTable th:first-child,#mcsTable td:first-child{position:sticky;left:0;background:#fff;box-shadow:1px 0 0 var(--line)}
+#mcsTable th:first-child{z-index:12}
+#mcsTable td:first-child{z-index:5}
 
 /* Performance Stack Ranking: colour coding, trends, podium */
 #metricTable td.sc-good{background:#e8f5e9;color:#2e7d32;font-weight:600}
