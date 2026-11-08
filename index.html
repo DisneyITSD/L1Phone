@@ -1533,10 +1533,10 @@ function buildScheduleView() {
       <td>${esc(r.Name)}</td>
       <td>${html}</td>
       <td>${convertShiftRange(shift)}</td>
-      <td>${formatTimeRange(r['Break 1'], 15)}</td>
-      <td>${formatTimeRange(r['Lunch'], 60)}</td>
-      <td>${formatTimeRange(r['Break 2'], 15)}</td>
-      <td>${formatTimeRange(r['Break 3'], 15)}</td>
+      <td>${isOff(shift) ? '' : formatTimeRange(r['Break 1'], 15)}</td>
+      <td>${isOff(shift) ? '' : formatTimeRange(r['Lunch'], 60)}</td>
+      <td>${isOff(shift) ? '' : formatTimeRange(r['Break 2'], 15)}</td>
+      <td>${isOff(shift) ? '' : formatTimeRange(r['Break 3'], 15)}</td>
       <td>${esc(r.Supervisor)}</td>
     </tr>`).join('');
 
