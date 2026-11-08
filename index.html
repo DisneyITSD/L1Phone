@@ -149,6 +149,8 @@ th,td{padding:8px;border:0;border-bottom:1px solid var(--line)}
 th{text-align:left;background:#fff;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;transition:.2s}
 th::after{content:' \2195';opacity:0;font-size:11px;transition:.2s}
 th:hover::after{opacity:1}
+.nosort th{cursor:default}
+.nosort th::after{content:none}
 .schedule-container{height:calc(100vh - 220px);overflow:auto;width:100%;border:1px solid var(--border);border-radius:8px}
 .schedule-container thead th{position:sticky;top:0;z-index:10}
 tbody tr:hover{filter:brightness(.96);transition:.2s}
@@ -161,11 +163,8 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #rosterTable td.today-col{background:#fff8d6!important}
 #rosterTable th.today-col{background:#fff3cd;color:#8a6100}
 #rosterTable th.today-col::before{content:'\25CF '}
-#lateTable th{cursor:default}
-#lateTable th::after{content:none}
-#qaTable th{cursor:default}
-#qaTable th::after{content:none}
 #qaTable td.qa-score{font-weight:700;white-space:nowrap}
+#qaTable tr.qa-click{cursor:pointer}
 
 /* ---------- Missing Agent Checker ---------- */
 .missing-layout{align-items:flex-start;gap:20px}
@@ -192,8 +191,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 .trk-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
 .trk-title{font-size:18px;font-weight:700;color:var(--navy);margin-right:8px}
 .trk-title small{font-size:13px;font-weight:400;color:var(--muted)}
-.trk-table th{cursor:default}
-.trk-table th::after{content:none}
 .trk-grid{border-collapse:separate;border-spacing:0}
 .trk-grid th,.trk-grid td{padding:6px 4px;text-align:center;font-size:12px;white-space:nowrap}
 .trk-grid th:first-child,.trk-grid td:first-child{position:sticky;left:0;z-index:2;background:#fff;text-align:left;min-width:170px;padding-left:10px}
@@ -220,6 +217,31 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 .team-grid .group-title small{color:var(--muted);font-weight:600}
 .team-grid ol{margin:0;padding-left:22px}
 .team-grid li{padding:2px 0}
+
+/* ---------- Metric scorecard ---------- */
+#metricTable th{white-space:normal;text-align:center;vertical-align:bottom}
+#metricTable th small{display:block;font-weight:600;color:var(--blue);text-transform:none;letter-spacing:0}
+#metricTable td{text-align:center;white-space:nowrap}
+#metricTable td:first-child{text-align:left;font-weight:600}
+#metricTable td.nodata{background:#4a4a4a;color:#fff;font-weight:600}
+#metricTable td.overall{font-weight:700}
+#metricTable td .rank{display:inline-block;min-width:28px;color:#64748b;font-weight:600}
+.msel{position:relative}
+.controls .msel-btn{background:#fff;color:#111;font-weight:400;border:1px solid #d0d7de;min-width:170px;text-align:left}
+.controls .msel-btn:hover{background:#f8fafc;transform:none}
+.msel-panel{position:absolute;top:100%;left:0;margin-top:4px;min-width:220px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 15px rgba(0,0,0,.15);padding:6px;z-index:60}
+.msel-panel label{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:500}
+.msel-panel label:hover{background:#eef6ff}
+.msel-panel label.ytd{font-weight:700;color:var(--navy);border-bottom:1px solid var(--line);margin-bottom:4px}
+.msel-panel input{padding:0;width:auto}
+#metricTable .rank + small,#metricTable small.mo{color:var(--muted);font-weight:400;margin-left:4px;text-transform:none;letter-spacing:0;display:inline}
+
+/* ---------- Monthly roster ---------- */
+.cal-day .cal-status{font-size:12px}
+.trk-grid td.rcell{min-width:84px;font-size:11px;font-weight:600}
+.trk-grid td.chg-out,.cal-day.chg-out{box-shadow:inset 0 0 0 2px #7c4dff}
+.cal-day.chg-out.is-today{box-shadow:inset 0 0 0 2px #7c4dff,0 0 0 2px var(--blue)}
+.trk-grid td.rcell small{display:block;font-size:10px;font-weight:700}
 
 /* ---------- Responsive ---------- */
 @media(max-width:980px){
@@ -262,19 +284,10 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <div class="dropdown"><button class="tab-btn">Schedule ▾</button>
       <div class="dropdown-content">
         <a href="#" data-tab="scheduleTab">Daily view</a>
-        <a href="#" data-tab="rosterTab">Weekly view</a>
-         <a href="#" data-tab="teamTab">Team roster</a>
+        <a href="#" data-tab="rosterTab">Monthly view</a>
+        <a href="#" data-tab="teamTab">Team roster</a>
       </div></div>
-    <div class="dropdown"><button class="tab-btn">Leaves (SCOT) ▾</button>
-      <div class="dropdown-content">
-        <a href="#" data-tab="ptoTab">Approved Leaves</a>
-      </div></div>
-    <div class="dropdown"><button class="tab-btn">Scorecard ▾</button>
-      <div class="dropdown-content">
-        <a href="#" data-tab="trackerTab">Attendance</a>
-        <a href="#" data-tab="qaTab">Quality Assurance</a>
-      </div></div>
-
+    <div class="dropdown"><button class="tab-btn" data-tab="metricTab">Overall Metric Scorecard</button></div>
     <div class="dropdown"><button class="tab-btn" data-tab="missingTab">Missing Agent Checker</button></div>
   </nav>
 
@@ -301,7 +314,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <div class="card stat" id="workingCard" style="--c:#28a745" data-tab="scheduleTab"><h3>👷 Working</h3><div class="value" id="workingCount">0</div><div class="pct" id="staffingPercent">0%</div><div class="pct" id="targetNote"></div></div>
     <div class="card stat" style="--c:#ff9800" data-tab="scheduleTab"><h3>☕ Break</h3><div class="value" id="breakCount">0</div><div class="pct" id="breakPercent">0%</div></div>
     <div class="card stat" style="--c:#dc3545" data-tab="scheduleTab"><h3>🍽️ Lunch</h3><div class="value" id="lunchCount">0</div><div class="pct" id="lunchPercent">0%</div></div>
-    <div class="card stat" style="--c:#17a2b8" data-tab="ptoTab"><h3>🗓️ Leave</h3><div class="value" id="ptoCount">0</div><div class="pct" id="ptoPercent">0%</div></div>
+    <div class="card stat" style="--c:#17a2b8"><h3>🗓️ Leave</h3><div class="value" id="ptoCount">0</div><div class="pct" id="ptoPercent">0%</div></div>
     <div class="card stat" style="--c:#dc3545"><h3>🚫 Absent</h3><div class="value" id="calledOffCount">0</div><div class="pct" id="attendancePercent">0%</div></div>
   </div>
 
@@ -337,6 +350,21 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   </div>
 </section>
 
+<!-- ============ SUPERVISOR SUMMARY ============ -->
+<section class="tab-panel" id="supervisorTab" hidden>
+  <div class="view-hint">📈 Full-day supervisor staffing summary including Scheduled, Leave, Absenteeism, OFF and Coverage.</div>
+  <div class="controls">
+    <input type="date" id="supervisorDate">
+    <select id="summaryView">
+      <option value="daily">Daily</option>
+      <option value="mtd">Month To Date</option>
+      <option value="weekly">Weekly</option>
+    </select>
+    <button onclick="buildSupervisorSummary()">Show Summary</button>
+  </div>
+  <div id="summaryDateRange" class="range-banner" style="margin-top:10px"></div>
+  <div class="cards" id="supervisorSummaryCards"></div>
+</section>
 
 <!-- ============ COVERAGE FORECAST ============ -->
 <section class="tab-panel" id="forecastTab" hidden>
@@ -350,27 +378,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   <div id="coverageTimelinePanel" class="panel"></div>
 </section>
 
-<!-- ============ ANNOUNCEMENTS ============ -->
-<section class="tab-panel" id="announcementsTab" hidden>
-  <div class="view-hint">📢 All dashboard announcements, reminders and informational posts.</div>
-  <div class="controls">
-    <select id="annPriority" onchange="buildAnnouncementsTab()">
-      <option value="">All Priorities</option>
-      <option value="High">🔴 High Priority</option>
-      <option value="Reminder">🟡 Reminders</option>
-      <option value="Informational">🟢 Informational</option>
-    </select>
-    <select id="annScope" onchange="buildAnnouncementsTab()">
-      <option value="active">Active only</option>
-      <option value="all">All (incl. expired)</option>
-    </select>
-    <input type="text" id="annSearch" placeholder="🔍 Search announcements..." onkeyup="buildAnnouncementsTab()">
-    <button onclick="refreshAttendanceData(true)">↻ Refresh</button>
-    <button class="blue" data-tab="announcementFormTab">+ New Announcement</button>
-  </div>
-  <div id="announcementsList"></div>
-</section>
-
 <!-- ============ DAILY SCHEDULE ============ -->
 <section class="tab-panel" id="scheduleTab" hidden>
   <div class="view-hint">📅 Review agent shifts, breaks, lunches, and supervisor assignments for the selected date.</div>
@@ -381,7 +388,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     </select>
     <input type="date" id="scheduleDate" onchange="buildScheduleView()">
     <select id="scheduleSupervisor" onchange="buildScheduleView()"><option>All Supervisors</option></select>
-    <button onclick="showAllAgents()">👥 Show All Agents</button>
     <input type="text" id="agentSearch" placeholder="🔍 Search Agent..." onkeyup="buildScheduleView()">
   </div>
 
@@ -413,31 +419,38 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   </div>
 </section>
 
-<!-- ============ WEEKLY ROSTER ============ -->
+<!-- ============ MONTHLY ROSTER ============ -->
 <section class="tab-panel" id="rosterTab" hidden>
-  <div class="view-hint">📊 Displays weekly schedules, shift patterns, break times, and days off for all agents.</div>
+  <div class="view-hint">📊 Monthly schedule per agent, built from the weekly roster plus the "Schedule By Date" tab. Colours show each day's attendance (same rules as Scorecard › Attendance). A purple outline 🔁 marks days changed from the weekly roster. Hover a cell for details.</div>
   <div class="controls">
+    <button type="button" onclick="shiftRosterMonth(-1)" title="Previous month">‹</button>
+    <input type="month" id="rosterMonth" onchange="buildRosterView()">
+    <button type="button" onclick="shiftRosterMonth(1)" title="Next month">›</button>
+    <select id="rosterView" onchange="buildRosterView()"><option value="calendar">Agent calendar</option><option value="grid">All agents (grid)</option></select>
+    <select id="rosterTimezone" onchange="buildRosterView()"><option value="EST">EST</option><option value="PH">PH</option></select>
     <select id="rosterSupervisor" onchange="buildRosterView()"><option>All Supervisors</option></select>
+    <select id="rosterAgent" onchange="buildRosterView()"></select>
     <input type="text" id="rosterSearch" placeholder="🔍 Search Agent..." onkeyup="buildRosterView()">
+    <label style="display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" id="rosterChangedOnly" style="padding:0;width:auto" onchange="buildRosterView()"> Changed only</label>
   </div>
-  <div class="panel">
+  <div class="daily-summary">
+    <div class="summary-box">👤 Agents: <span id="rosterCount">0</span></div>
+    <div class="summary-box">🔁 Schedule changes: <span id="rosterChangeCount">0</span></div>
+    <div class="summary-box">📊 Attendance: <span id="rosterAttAvg">—</span></div>
+  </div>
+  <div class="trk-legend" id="rosterLegend"></div>
+  <div id="rosterCal"></div>
+  <div class="panel" id="rosterGridWrap">
     <div class="schedule-container">
-      <table id="rosterTable">
-        <thead>
-          <tr>
-            <th onclick="sortBy('roster','Name')">👤 Agent</th>
-            <th onclick="sortBy('roster','Monday')">📆 Mon</th>
-            <th onclick="sortBy('roster','Tuesday')">📆 Tue</th>
-            <th onclick="sortBy('roster','Wednesday')">📆 Wed</th>
-            <th onclick="sortBy('roster','Thursday')">📆 Thu</th>
-            <th onclick="sortBy('roster','Friday')">📆 Fri</th>
-            <th onclick="sortBy('roster','Saturday')">📆 Sat</th>
-            <th onclick="sortBy('roster','Sunday')">📆 Sun</th>
-            <th onclick="sortBy('roster','Supervisor')">🧑‍💼 Supervisor</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <table id="rosterTable" class="nosort trk-grid"><thead></thead><tbody></tbody></table>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:12px">
+    <h3>🔁 Schedule changes this month</h3>
+    <div class="schedule-container" style="height:auto;max-height:50vh">
+      <table id="rosterChanges" class="nosort"><thead><tr>
+        <th>👤 Agent</th><th>📅 Date</th><th>Weekly roster</th><th>Now</th><th>🧑‍💼 Supervisor</th>
+      </tr></thead><tbody></tbody></table>
     </div>
   </div>
 </section>
@@ -462,7 +475,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   <div class="controls">
     <input type="date" id="ptoDate" onchange="buildRecordTable('pto')">
     <select id="ptoSupervisor" onchange="buildRecordTable('pto')"><option>All Supervisors</option></select>
-    <button onclick="buildRecordTable('pto')">Show PTO</button>
     <button onclick="clearRecordDate('pto')">All Dates</button>
     <input type="text" id="ptoSearch" placeholder="🔍 Search Agent..." onkeyup="buildRecordTable('pto')">
   </div>
@@ -474,6 +486,22 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   </div>
 </section>
 
+<!-- ============ ABSENTEEISM ============ -->
+<section class="tab-panel" id="calledOffTab" hidden>
+  <div class="view-hint">🚦 Displays attendance exceptions including call-outs, NCNS, late arrivals, and early departures.</div>
+  <div class="controls">
+    <input type="date" id="calledOffDate" onchange="buildRecordTable('att')">
+    <select id="calledOffSupervisor" onchange="buildRecordTable('att')"><option>All Supervisors</option></select>
+    <button onclick="clearRecordDate('att')">All Dates</button>
+    <input type="text" id="calledOffSearch" placeholder="🔍 Search Agent..." onkeyup="buildRecordTable('att')">
+  </div>
+  <div class="panel">
+    <h2>Called Off List</h2>
+    <div class="schedule-container">
+      <table id="calledOffTable"><thead></thead><tbody></tbody></table>
+    </div>
+  </div>
+</section>
 
 <!-- ============ LATE / LEFT EARLY ============ -->
 <section class="tab-panel" id="lateTab" hidden>
@@ -492,7 +520,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   </div>
   <div class="panel">
     <div class="schedule-container">
-      <table id="lateTable">
+      <table id="lateTable" class="nosort">
         <thead><tr>
           <th>👤 Agent</th><th>📅 Date</th><th>🕒 Shift</th>
           <th>⏰ Actual login</th><th>↘️ Actual logout</th>
@@ -514,7 +542,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <select id="trackerView" onchange="buildTracker()">
       <option value="grid">All agents (grid)</option>
       <option value="calendar">Agent calendar</option>
-      <option value="list">Agent list</option>
     </select>
     <select id="trackerSupervisor" onchange="buildTracker()"><option>All Supervisors</option></select>
     <select id="trackerAgent" onchange="buildTracker()"></select>
@@ -527,7 +554,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 
 <!-- ============ SCORECARD: QUALITY ASSURANCE ============ -->
 <section class="tab-panel" id="qaTab" hidden>
-  <div class="view-hint">✅ Quality Assurance scores by analyst, call date and ticket.</div>
+  <div class="view-hint">✅ Quality Assurance scores by analyst. Pick "All Agents" for one row per agent (average score), or pick an agent / click a name to see each audit.</div>
   <div class="controls">
     <label style="display:flex;align-items:center;gap:6px;font-weight:600">From <input type="date" id="qaFrom" onchange="buildQA()"></label>
     <label style="display:flex;align-items:center;gap:6px;font-weight:600">To <input type="date" id="qaTo" onchange="buildQA()"></label>
@@ -538,18 +565,39 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
   </div>
   <div class="daily-summary">
-    <div class="summary-box">📋 Records: <span id="qaCount">0</span></div>
+    <div class="summary-box">👤 Agents: <span id="qaAgents">0</span></div>
+    <div class="summary-box">📋 Audits: <span id="qaCount">0</span></div>
     <div class="summary-box">📊 Average score: <span id="qaAvg">—</span></div>
   </div>
   <div class="panel">
     <div class="schedule-container">
-      <table id="qaTable">
-        <thead><tr>
-          <th>👤 Analyst Name</th><th>⭐ Score</th><th>🎫 Ticket Number</th>
-          <th>📅 Call Date</th><th>🧑‍💼 Supervisor</th>
-        </tr></thead>
+      <table id="qaTable" class="nosort">
+        <thead></thead>
         <tbody></tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCORECARD: OVERALL METRIC ============ -->
+<section class="tab-panel" id="metricTab" hidden>
+  <div class="view-hint">📊 Overall metric scorecard per agent. Tick one or more months (or Year to date) and the scores are averaged automatically. Click a column title to sort.</div>
+  <div class="controls">
+    <div class="msel" id="metricMonthWrap">
+      <button type="button" id="metricMonthBtn" class="msel-btn">Month ▾</button>
+      <div class="msel-panel" id="metricMonthPanel" hidden></div>
+    </div>
+    <select id="metricSupervisor" onchange="buildMetric()"><option>All Supervisors</option></select>
+    <input type="text" id="metricSearch" placeholder="🔍 Search Agent..." onkeyup="buildMetric()">
+    <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
+  </div>
+  <div class="daily-summary">
+    <div class="summary-box">👤 Agents: <span id="metricCount">0</span></div>
+    <div class="summary-box">📊 Average total: <span id="metricAvg">—</span></div>
+  </div>
+  <div class="panel">
+    <div class="schedule-container">
+      <table id="metricTable"><thead></thead><tbody></tbody></table>
     </div>
   </div>
 </section>
@@ -583,81 +631,29 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   </div>
 </section>
 
-<section class="tab-panel" id="attendanceTimeFormTab" hidden>
-  <div class="view-hint">⏱️ Submit the actual login or logout time for agents who were running late or left early (used by the Scorecard › Attendance page only).</div>
-  <div class="note amber" style="padding:15px;box-shadow:var(--shadow)">
-    <h3 style="color:#b26a00">⚠️ Double-check before submitting</h3>
-    <p style="margin:0">
-      Enter the time in <b>EST</b> and check <b>AM/PM</b>. Use the <b>shift start date</b> as the date.
-      Submitting again for the same agent and date replaces the earlier time.
-    </p>
-  </div>
-  <div class="panel">
-    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSftBK9SKk8ivbBEPS3uAiZyRbYA9nwbGj1sPumnouXmGetwAw/viewform?embedded=true" width="100%" height="1200"></iframe>
-  </div>
-</section>
-
-<section class="tab-panel" id="ptoFormTab" hidden>
-  <div class="view-hint">🏖️ Submit PTO updates directly from the dashboard.</div>
-  <div class="note green" style="padding:15px;box-shadow:var(--shadow)">
-    <h3 style="color:#1b7f3b">📋 PTO Reminder</h3>
-    <p style="margin:0">
-      Please verify the <b>Agent Name, PTO Date (EST) and Reason</b> before submitting.
-      If corrections are needed after submission, notify <b>Manilyn</b> so the dashboard remains accurate.
-    </p>
-  </div>
-  <div class="panel">
-    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfuk7R2oLp9f3dazMwiQkHEX2n4eF09Zrei2W2O1dP8-xlCKQ/viewform?embedded=true" width="100%" height="1200"></iframe>
-  </div>
-</section>
-
-<section class="tab-panel" id="announcementFormTab" hidden>
-  <div class="view-hint">📢 Submit dashboard announcements and reminders.</div>
-  <div class="panel">
-    <iframe
-      src="https://docs.google.com/forms/d/e/1FAIpQLSf9x9VTY6x-nX82soQ3P1b5Dfx60PoKll5YVCeXlBa1qK9E1A/viewform?embedded=true"
-      width="100%"
-      height="1200">
-    </iframe>
-  </div>
-</section>
-
-
 <script>
 /* =====================================================================
    CONFIG
    ===================================================================== */
 const SHEET_ID = '13whMJorFWHuylEfFDwbB30yobPtQ_G3EfAZtv040kQE';
 const sheetUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+const scheduleUrl = gid => sheetUrl(gid) + '&headers=1';
 const URLS = {
   pto: sheetUrl(1297010746),
   calledOff: sheetUrl(2139820898),
   attTime: sheetUrl(417537234),            // "ATTENDANCE TIME" tab: Name | EST Date | Type | Actual Time
   announcements: sheetUrl(6259028),
-  qa: sheetUrl(337356668),                 // "QA" tab
-  daily: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&gid=1383082920`          // "Schedule By Date" tab
+  qa: scheduleUrl(337356668),              // "QA" tab (&headers=1 forces row 1 to be read as the header)
+  metric: sheetUrl(2096143764),            // "metric scorecard" tab
+  daily: scheduleUrl(1383082920)           // "Schedule By Date" tab
 };
-
-const SCHEDULE_SHEET_ID = SHEET_ID;
-const SCHEDULE_TABS = {
-  est: { gid: '1891248054' },
-  ph: { gid: '1520744940' }
-};
-const tabLabel = tab => typeof tab === 'object' ? `gid ${tab.gid}` : `"${tab}"`;
-const scheduleUrl = tab =>
-  `https://docs.google.com/spreadsheets/d/${SCHEDULE_SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&` +
-  (typeof tab === 'object' ? `gid=${tab.gid}` : `sheet=${encodeURIComponent(tab)}`);
+const SCHEDULE_TABS = { est: '1891248054', ph: '1520744940' };
+const tabLabel = gid => `gid ${gid}`;
 
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const WEEK = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const ALL = 'All Supervisors';
 const REFRESH_MS = 60000;
-
-/* Staffing target (minimum agents on the floor). */
-const DEFAULT_MIN_AGENTS = 0;
-const TARGET_OVERRIDES = [
-  // { from: '00:00', to: '06:00', min: 0 },
-];
 const TARGET_KEY = 'ditsc_min_agents';
 
 const SUP_COLORS = {
@@ -690,12 +686,15 @@ let dailyMap = new Map();
 let currentWorkingAgents = [];
 let realtimeMode = false, realtimeTimer = null;
 let activeTab = 'lookupTab';
+let metricHeads = [], metricWeights = [], metricRows = [];
+let metricIdx = { month: -1, agent: 0, sup: -1, total: -1 }, metricSortSet = false;
 
 const sortState = {
   schedule: { col: '', asc: true },
   roster:   { col: '', asc: true },
   pto:      { col: '', asc: true },
-  att:      { col: '', asc: true }
+  att:      { col: '', asc: true },
+  metric:   { col: -1, asc: true }
 };
 
 /* =====================================================================
@@ -713,7 +712,7 @@ const normName = s => up(s).replace(/,/g, ' ').split(/\s+/).filter(Boolean).sort
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const isOff = shift => !shift || up(shift) === 'OFF';
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-/* All dates display as e.g. "October 1, 2026" (any options passed by callers are ignored) */
+/* All dates display as e.g. "October 1, 2026" */
 const fmtDate = d => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
 /* Announcement timestamp, shown exactly as recorded in the sheet (no timezone conversion) */
@@ -784,7 +783,7 @@ function phTime(date, mins) {
   utc = local - nyOffsetMs(utc);
   utc = local - nyOffsetMs(utc);
   return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: true })
-    .format(new Date(utc)).replace(/\s/g, ' ');
+    .format(new Date(utc)).replace(/\s/g, ' ');   // normalizes the narrow no-break space newer browsers put before AM/PM
 }
 const phRange = (date, start, dur) => `${phTime(date, start)} - ${phTime(date, start + dur)}`;
 
@@ -801,6 +800,7 @@ const supClass = name => supColor(name) ? 'sup-row' : '';
 const supStyle = name => supColor(name) ? `--sc:${supColor(name)}` : '';
 const recFor = (list, name, date) =>
   list.find(x => normName(x.Name) === normName(name) && normalizeDate(x['EST Date']) === date);
+const findAgent = (name, list = estData) => list.find(a => normName(a.Name) === normName(name));
 
 function matchType(types, reason, fallback) {
   const r = up(reason);
@@ -823,7 +823,8 @@ function sortBy(view, col) {
   const s = sortState[view];
   s.asc = s.col === col ? !s.asc : true;
   s.col = col;
-  ({ schedule: buildScheduleView, roster: buildRosterView, pto: () => buildRecordTable('pto'), att: () => buildRecordTable('att') })[view]();
+  ({ schedule: buildScheduleView, roster: buildRosterView, metric: buildMetric,
+     pto: () => buildRecordTable('pto'), att: () => buildRecordTable('att') })[view]();
 }
 
 /* =====================================================================
@@ -848,26 +849,24 @@ document.querySelectorAll('[data-tab]').forEach(el =>
 /* =====================================================================
    DATA LOADING
    ===================================================================== */
-async function loadSheet(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const parsed = Papa.parse(await res.text(), { header: true, skipEmptyLines: 'greedy' });
-  if (!parsed.meta.fields?.includes('Name')) throw new Error('sheet has no "Name" column - is it shared?');
-  return parsed.data.filter(row => {
-    const n = (row.Name || '').toString().trim();
-    return n && n !== "'" && n !== '""';
-  });
-}
-
-async function loadAnnouncementSheet(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const parsed = Papa.parse(await res.text(), { header: true, skipEmptyLines: 'greedy' });
-  return parsed.data;
-}
-
 const loadErrors = {};
 let lastUpdated = null;
+
+const clean = v => String(v ?? '').replace(/^\uFEFF/, '').trim();
+
+async function fetchCSV(url, { raw = false, need = [] } = {}) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const p = Papa.parse(await res.text(), { header: !raw, skipEmptyLines: 'greedy' });
+  const missing = [].concat(need).find(f => !p.meta.fields?.includes(f));
+  if (missing) throw new Error(`no "${missing}" column - check the gid and that the sheet is shared`);
+  return p.data;
+}
+const guard = async (key, msg, fn) => {
+  try { await fn(); loadErrors[key] = ''; }
+  catch (e) { loadErrors[key] = `${msg} (${e.message})`; }
+  renderStatus();
+};
 
 function renderStatus() {
   const msgs = Object.values(loadErrors).filter(Boolean);
@@ -877,12 +876,15 @@ function renderStatus() {
     ? `Last updated ${lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })} ET` : '';
 }
 
+const loadSheet = async url =>
+  (await fetchCSV(url, { need: 'Name' })).filter(r => { const n = (r.Name || '').trim(); return n && n !== "'" && n !== '""'; });
+
 async function loadAttendance() {
   try {
     [ptoList, calledOffList, announcementList, attTimeList] = await Promise.all([
       loadSheet(URLS.pto),
       loadSheet(URLS.calledOff),
-      loadAnnouncementSheet(URLS.announcements),
+      fetchCSV(URLS.announcements),
       loadSheet(URLS.attTime).catch(() => [])      // if this tab fails, everything else keeps working
     ]);
     loadErrors.attendance = '';
@@ -926,30 +928,12 @@ function normalizeScheduleRow(r) {
   return o;
 }
 
-async function loadScheduleTab(tab) {
-  const res = await fetch(scheduleUrl(tab));
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const parsed = Papa.parse(await res.text(), { header: true, skipEmptyLines: 'greedy' });
-  const fields = parsed.meta.fields || [];
-  if (!fields.includes('Name') || !fields.includes('Monday'))
-    throw new Error(`tab ${tabLabel(tab)} has no Name / Monday columns - check the tab and that the sheet is shared`);
-  return parsed.data.map(normalizeScheduleRow).filter(r => r.Name);
-}
-
-async function loadSchedules() {
-  try {
-    const [est, ph] = await Promise.all([
-      loadScheduleTab(SCHEDULE_TABS.est),
-      loadScheduleTab(SCHEDULE_TABS.ph)
-    ]);
-    if (!est.length) throw new Error(`tab ${tabLabel(SCHEDULE_TABS.est)} is empty`);
-    estData = est; phData = ph;
-    loadErrors.schedules = '';
-  } catch (err) {
-    loadErrors.schedules = `Couldn't load schedules from Google Sheets (${err.message})`;
-  }
-  renderStatus();
-}
+const loadSchedules = () => guard('schedules', "Couldn't load schedules from Google Sheets", async () => {
+  const [est, ph] = await Promise.all(Object.values(SCHEDULE_TABS).map(async gid =>
+    (await fetchCSV(scheduleUrl(gid), { need: ['Name', 'Monday'] })).map(normalizeScheduleRow).filter(r => r.Name)));
+  if (!est.length) throw new Error(`tab ${tabLabel(SCHEDULE_TABS.est)} is empty`);
+  estData = est; phData = ph;
+});
 
 function buildDailyMap(rows) {
   const m = new Map();
@@ -966,39 +950,35 @@ function buildDailyMap(rows) {
   return m;
 }
 
-async function loadDaily() {
-  try {
-    const res = await fetch(URLS.daily);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const rows = Papa.parse(await res.text(), { header: false, skipEmptyLines: 'greedy' }).data;
-    const clean = v => String(v ?? '').replace(/^\uFEFF/, '').trim();
-    const h = rows.findIndex(r => clean(r[0]).toLowerCase() === 'date');
-    if (h < 0) throw new Error(`first cell is "${clean(rows[0]?.[0]).slice(0, 40)}" - check the gid and sharing`);
-    const heads = rows[h].map(clean);
-    const data = rows.slice(h + 1).map(r => Object.fromEntries(heads.map((k, i) => [k, r[i] ?? ''])));
-    dailyMap = buildDailyMap(data);
-    loadErrors.daily = '';
-  } catch (err) {
-    loadErrors.daily = `Couldn't load "Schedule By Date" (${err.message}) - showing the weekly schedule instead`;
-  }
-  renderStatus();
-}
+const loadDaily = () => guard('daily', 'Couldn\'t load "Schedule By Date"', async () => {
+  const rows = await fetchCSV(URLS.daily, { raw: true });
+  const h = rows.findIndex(r => clean(r[0]).toLowerCase() === 'date');
+  if (h < 0) throw new Error(`first cell is "${clean(rows[0]?.[0]).slice(0, 40)}" - check the gid and sharing`);
+  const heads = rows[h].map(clean);
+  dailyMap = buildDailyMap(rows.slice(h + 1).map(r => Object.fromEntries(heads.map((k, i) => [k, r[i] ?? '']))));
+});
 
 /* QA tab: Analyst Name | Supervisor | CallDate | TicketNumber | Notes | Score | ... */
-async function loadQA() {
-  try {
-    const res = await fetch(URLS.qa);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const parsed = Papa.parse(await res.text(), { header: true, skipEmptyLines: 'greedy' });
-    if (!parsed.meta.fields?.includes('Analyst Name'))
-      throw new Error('no "Analyst Name" column - check the gid and that the sheet is shared');
-    qaList = parsed.data.filter(r => String(r['Analyst Name'] ?? '').trim());
-    loadErrors.qa = '';
-  } catch (err) {
-    loadErrors.qa = `Couldn't load the QA tab (${err.message})`;
+const loadQA = () => guard('qa', "Couldn't load the QA tab", async () => {
+  qaList = (await fetchCSV(URLS.qa, { need: 'Analyst Name' })).filter(r => String(r['Analyst Name'] ?? '').trim());
+});
+
+/* Metric tab: Month | Agent Name | ...scores... | TOTAL | Remarks | Supervisor
+   The header row is the row that has an "Agent Name" cell. If a row above it holds weights, they are shown under the titles. */
+const loadMetric = () => guard('metric', "Couldn't load the Metric Scorecard tab", async () => {
+  const rows = await fetchCSV(URLS.metric, { raw: true });
+  const h = rows.findIndex(r => r.some(c => clean(c).toLowerCase() === 'agent name'));
+  if (h < 0) throw new Error('no "Agent Name" header found - check the tab name/gid and sharing');
+  metricHeads = rows[h].map(clean);
+  const find = re => metricHeads.findIndex(x => re.test(x));
+  metricIdx = { month: find(/^month$/i), agent: find(/^agent name$/i), sup: find(/^supervisor$/i), total: find(/^total$/i) };
+  metricWeights = h > 0 ? rows[h - 1].map(clean) : [];
+  metricRows = rows.slice(h + 1).filter(r => clean(r[metricIdx.agent])).map(r => metricHeads.map((_, i) => clean(r[i])));
+  if (!metricSortSet && metricIdx.total >= 0) {            // first load: highest TOTAL first
+    sortState.metric = { col: metricIdx.total, asc: false };
+    metricSortSet = true;
   }
-  renderStatus();
-}
+});
 
 const addDays = (dateStr, n) => { const d = parseYMD(dateStr); d.setDate(d.getDate() + n); return ymd(d); };
 const dailyFor = (r, date) => dailyMap.get(normName(r.Name) + '|' + date);
@@ -1013,9 +993,9 @@ function rowFor(r, date) {
 }
 
 async function refreshAttendanceData(notify = false) {
-  await Promise.all([loadAttendance(), loadSchedules(), loadDaily(), loadQA()]);
+  await Promise.all([loadAttendance(), loadSchedules(), loadDaily(), loadQA(), loadMetric()]);
   renderAll();
-  if (notify) toast(loadErrors.attendance || loadErrors.schedules || loadErrors.daily || loadErrors.qa
+  if (notify) toast(loadErrors.attendance || loadErrors.schedules || loadErrors.daily || loadErrors.qa || loadErrors.metric
     ? '⚠️ Refresh failed - see the banner at the top.'
     : '✅ Schedules, PTO, Attendance and QA refreshed');
 }
@@ -1026,9 +1006,15 @@ const TAB_RENDERERS = {
   rosterTab: buildRosterView,
   teamTab: buildTeamView,
   ptoTab: () => buildRecordTable('pto'),
+  calledOffTab: () => buildRecordTable('att'),
+  lateTab: buildLateTable,
   trackerTab: buildTracker,
   qaTab: buildQA,
-  };
+  metricTab: buildMetric,
+  supervisorTab: buildSupervisorSummary,
+  forecastTab: refreshForecast,
+  announcementsTab: buildAnnouncementsTab
+};
 
 function renderAll() {
   loadSup();
@@ -1039,7 +1025,7 @@ function renderAll() {
 
 function loadSup() {
   const options = `<option>${ALL}</option>` + uniqueSupervisors().map(s => `<option>${esc(s)}</option>`).join('');
-  ['supervisor', 'scheduleSupervisor', 'ptoSupervisor', 'rosterSupervisor', 'trackerSupervisor', 'teamSupervisor']
+  ['supervisor', 'scheduleSupervisor', 'ptoSupervisor', 'calledOffSupervisor', 'lateSupervisor', 'rosterSupervisor', 'trackerSupervisor', 'teamSupervisor']
     .forEach(id => {
       const el = $(id), prev = el.value;
       el.innerHTML = options;
@@ -1066,7 +1052,7 @@ function toggleRealtime() {
 
 function updateRealtime() {
   const now = estNow(), today = ymd(now);
-  ['selectedDate', 'ptoDate', 'scheduleDate'].forEach(id => $(id).value = today);
+  ['selectedDate', 'ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate'].forEach(id => $(id).value = today);
   $('interval').value = `${pad(now.getHours())}:${now.getMinutes() >= 30 ? '30' : '00'}`;
   renderAll();
 }
@@ -1330,7 +1316,7 @@ function buildSupervisorSummary() {
   const end = parseYMD(date);
 
   if (view === 'daily') {
-    $('summaryDateRange').innerHTML = `📅 Daily Summary: ${fmtDate(end, { month: 'long', day: 'numeric', year: 'numeric' })}`;
+    $('summaryDateRange').innerHTML = `📅 Daily Summary: ${fmtDate(end)}`;
     return buildDailySummary(date);
   }
   const start = view === 'mtd'
@@ -1379,8 +1365,7 @@ function buildDailySummary(date) {
 }
 
 function rangeDetailSection(label, items) {
-  const line = x => `${esc(x.name)} — ${fmtDate(parseYMD(x.date), { month: 'short', day: 'numeric' })}` +
-                    (x.reason ? ` (${esc(x.reason)})` : '');
+  const line = x => `${esc(x.name)} — ${fmtDate(parseYMD(x.date))}` + (x.reason ? ` (${esc(x.reason)})` : '');
   const sorted = [...items].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
   return `<strong>${label} (${items.length})</strong><br>${sorted.map(line).join('<br>') || '<em>None</em>'}`;
 }
@@ -1390,19 +1375,18 @@ function buildRangeSummary(start, end, leaveLabel) {
   estData.forEach(a => {
     (groups[a.Supervisor || 'Unassigned'] ??= { team: 0, leaveAgents: [], attendanceAgents: [] }).team++;
   });
-  const rosterFor = name => estData.find(a => normName(a.Name) === normName(name));
   const inRange = d => { if (!d) return false; const x = parseYMD(d); return x >= start && x <= end; };
 
   ptoList.forEach(rec => {
     const d = normalizeDate(rec['EST Date']);
     if (!inRange(d) || !up(rec.Reason).includes('VACATION')) return;
-    const agent = rosterFor(rec.Name);
+    const agent = findAgent(rec.Name);
     if (agent) groups[agent.Supervisor || 'Unassigned'].leaveAgents.push({ name: rec.Name, date: d, reason: rec.Reason });
   });
   calledOffList.forEach(rec => {
     const d = normalizeDate(rec['EST Date']);
     if (!inRange(d)) return;
-    const agent = rosterFor(rec.Name);
+    const agent = findAgent(rec.Name);
     if (agent) groups[agent.Supervisor || 'Unassigned'].attendanceAgents.push({ name: rec.Name, date: d, reason: rec.Reason || 'No Reason' });
   });
 
@@ -1517,12 +1501,6 @@ function buildCoverageTimeline() {
 /* =====================================================================
    DAILY SCHEDULE
    ===================================================================== */
-function showAllAgents() {
-  $('scheduleSupervisor').value = ALL;
-  $('agentSearch').value = '';
-  buildScheduleView();
-}
-
 function buildScheduleView() {
   const date = $('scheduleDate').value;
   if (!date) return;
@@ -1569,38 +1547,169 @@ function buildScheduleView() {
 }
 
 /* =====================================================================
-   WEEKLY ROSTER
+   MONTHLY ROSTER
+   Weekly roster = baseline. "Schedule By Date" overrides it per day.
+   A day is "changed" when the dated shift differs from the weekly roster.
    ===================================================================== */
-function buildRosterView() {
-  const sup = $('rosterSupervisor').value;
-  const q = up($('rosterSearch').value);
-  const rows = estData.filter(r => (sup === ALL || r.Supervisor === sup) && (!q || up(r.Name).includes(q)));
+function phHHMM(date, mins) {
+  const m = phTime(date, mins).match(/(\d+):(\d+)\s*([AP])M/i);
+  if (!m) return '';
+  let h = +m[1] % 12; if (m[3].toUpperCase() === 'P') h += 12;
+  return pad(h) + ':' + m[2];
+}
 
-  const { col, asc } = sortState.roster;
-  if (col) {
-    const dir = asc ? 1 : -1;
-    const start = v => { const p = parseShift(v); return p ? p[0] : 9999; };
-    rows.sort((a, b) => (col === 'Name' || col === 'Supervisor')
-      ? dir * String(a[col] || '').localeCompare(String(b[col] || ''))
-      : dir * (start(a[col]) - start(b[col])));
-  }
+/* "07:00" -> "7AM", "18:30" -> "6:30PM" */
+const short12 = hhmm => { const [h, m] = hhmm.split(':').map(Number); return `${h % 12 || 12}${m ? ':' + pad(m) : ''}${h >= 12 ? 'PM' : 'AM'}`; };
 
-  const todayName = DAYS[estNow().getDay()];
-  [...$('rosterTable').tHead.rows[0].cells].forEach((th, i) =>
-    th.classList.toggle('today-col', i >= 1 && i <= 7 && WEEK[i - 1] === todayName));
+function rosterPick(name) {
+  $('rosterView').value = 'calendar';
+  $('rosterAgent').value = name;
+  buildRosterView();
+}
 
-  const cell = (est, ph, isToday) => `<td class="${isToday ? 'today-col' : ''}">
-    <div class="us">${FLAG.us}${convertShiftRange(est)}</div>
-    <div class="ph">${FLAG.ph}${convertShiftRange(ph)}</div></td>`;
-
-  $('rosterTable').tBodies[0].innerHTML = rows.map(r => {
-    const phRow = phData.find(x => normName(x.Name) === normName(r.Name));
-    return `<tr class="${supClass(r.Supervisor)}" style="${supStyle(r.Supervisor)}">
-      <td>${esc(r.Name)}</td>
-      ${WEEK.map(d => cell(r[d], phRow?.[d], d === todayName)).join('')}
-      <td>${esc(r.Supervisor)}</td>
-    </tr>`;
+function rosterCalendarHtml({ r, cells }, today, ph) {
+  const lead = (parseYMD(cells[0].date).getDay() + 6) % 7;
+  const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+  let chg = 0;
+  const days = cells.map(c => {
+    const a = c.att, p = parseShift(c.shift);
+    const len = p ? (p[1] <= p[0] ? p[1] + 1440 - p[0] : p[1] - p[0]) : 0;
+    const changed = c.shiftChg || c.supChg;
+    if (changed) chg++;
+    const time = !p ? 'OFF' : ph ? phRange(c.estDate || c.date, p[0], len) + ' PH' : convertShiftRange(c.shift) + ' EST';
+    return `<div class="cal-day st-${a.kind}${changed ? ' chg-out' : ''}${c.date === today ? ' is-today' : ''}" title="${esc(ph && c.estDate ? `PH ${fmtDate(parseYMD(c.date))} · EST shift date ${fmtDate(parseYMD(c.estDate))} · ${a.text}` + (a.missed ? ' · ' + missedText(a) : '') : trackerTip(a))}">
+      <div class="cal-num">${parseYMD(c.date).getDate()}</div>
+      <div class="cal-status">${c.shiftChg ? '🔁 ' : ''}${time}</div>
+      ${a.kind === 'off' ? '' : `<div class="cal-status" style="font-size:11px">${a.icon} ${esc(a.text)}</div>`}
+      ${a.missed ? `<div class="cal-note">${esc(missedText(a))}</div>` : ''}
+      ${c.shiftChg ? `<div class="cal-note">Was ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)}</div>` : ''}
+      ${c.supChg ? `<div class="cal-note">Supervisor: ${esc(c.sup)}</div>` : ''}</div>`;
   }).join('');
+  const head = trackerHeaderHtml(r, cells.map(c => c.att))
+    .replace(/<\/div>\s*$/, `<span class="trk-chip info" style="box-shadow:inset 0 0 0 2px #7c4dff">🔁 Changed: ${chg}</span></div>`);
+  return `${head}<div class="panel"><div class="cal">${dows}${'<div></div>'.repeat(lead)}${days}</div></div>`;
+}
+
+/* Philippine calendar date (YYYY-MM-DD) of an EST clock time on an EST date */
+function phDate(date, mins) {
+  const [y, m, d] = date.split('-').map(Number);
+  const local = Date.UTC(y, m - 1, d, 0, mins);
+  let utc = local + 5 * 3600000;
+  utc = local - nyOffsetMs(utc);
+  utc = local - nyOffsetMs(utc);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(utc));
+}
+
+/* PH view: every shift sits on the PH date it STARTS on (an EST Thursday 8 PM shift is a PH Friday 9 AM shift) */
+function rosterPhRemap(r, cells, ph, days) {
+  if (!ph) return cells;
+  const by = {};
+  cells.forEach(c => {
+    const p = parseShift(c.shift);
+    if (!p) return;
+    const d = phDate(c.date, p[0]);
+    by[d] = { ...c, estDate: c.date, date: d };
+  });
+  return days.map(d => by[d] || {
+    date: d, estDate: d, base: 'OFF', shift: 'OFF', shiftChg: false, supChg: false, sup: r.Supervisor,
+    att: { kind: 'off', text: 'OFF', code: '–', icon: '–', reason: '', missed: 0, estimated: false, exp: 0, worked: 0, shift: '', date: d }
+  });
+}
+
+function shiftRosterMonth(delta) {
+  const [y, m] = ($('rosterMonth').value || ymd(estNow()).slice(0, 7)).split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  $('rosterMonth').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  buildRosterView();
+}
+
+function buildRosterView() {
+  let ym = $('rosterMonth').value;
+  if (!ym) { ym = ymd(estNow()).slice(0, 7); $('rosterMonth').value = ym; }
+  const [y, m] = ym.split('-').map(Number);
+  const days = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
+  const today = ymd(estNow());
+  const ph = $('rosterTimezone').value === 'PH';
+  const sup = $('rosterSupervisor').value, q = up($('rosterSearch').value);
+  const onlyChanged = $('rosterChangedOnly').checked;
+
+  const viewToday = ph ? ymd(new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }))) : today;
+  const calc = ph ? [addDays(days[0], -1), ...days, addDays(days[days.length - 1], 1)] : days;   // PH view needs the neighbouring EST days
+  const idx = { pto: indexRecords(ptoList), att: indexAttendance(calledOffList, attTimeList) };
+  const data = estData.map(r => ({
+    r,
+    cells: rosterPhRemap(r, calc.map(date => {
+      const base = r[dayName(date)] || 'OFF';
+      const d = dailyFor(r, date);
+      const shift = d ? d.shift : base;
+      return {
+        date, base, shift,
+        shiftChg: !!d && normShift(d.shift) !== normShift(base),
+        supChg: !!d && !!d.supervisor && d.supervisor !== r.Supervisor,
+        sup: d?.supervisor || r.Supervisor,
+        att: attendanceFor(r, date, today, idx)
+      };
+    }), ph, days)
+  })).filter(x =>
+    (!q || up(x.r.Name).includes(q)) &&
+    (sup === ALL || x.cells.some(c => c.sup === sup)) &&
+    (!onlyChanged || x.cells.some(c => c.shiftChg || c.supChg)))
+    .sort((a, b) => a.r.Name.localeCompare(b.r.Name));
+
+  const view = $('rosterView').value, sel = $('rosterAgent'), prevAgent = sel.value;
+  sel.innerHTML = data.map(x => `<option value="${esc(x.r.Name)}">${esc(x.r.Name)}</option>`).join('');
+  if (data.some(x => x.r.Name === prevAgent)) sel.value = prevAgent;
+  sel.hidden = view !== 'calendar';
+  $('rosterCal').hidden = view !== 'calendar';
+  $('rosterGridWrap').hidden = view === 'calendar';
+
+  const dow = 'SMTWTFS';
+  $('rosterTable').tHead.innerHTML = '<tr><th>👤 Agent</th><th title="Schedule changes">🔁</th><th title="Attendance % (hours worked / expected)">%</th>' + days.map(d => {
+    const dt = parseYMD(d);
+    return `<th class="${d === viewToday ? 'today' : ''}">${dt.getDate()}<br><small>${dow[dt.getDay()]}</small></th>`;
+  }).join('') + '</tr>';
+
+  const changes = [];
+  $('rosterTable').tBodies[0].innerHTML = data.map(({ r, cells }) => {
+    const chg = cells.filter(c => c.shiftChg || c.supChg);
+    chg.forEach(c => changes.push({ name: r.Name, ...c }));
+    const sum = trackerSummary(cells.map(c => c.att));
+    const tds = cells.map(c => {
+      const p = parseShift(c.shift), off = !p;
+      const len = p ? (p[1] <= p[0] ? p[1] + 1440 - p[0] : p[1] - p[0]) : 0;
+      const text = off ? 'OFF' : ph ? `${short12(phHHMM(c.estDate || c.date, p[0]))}-${short12(phHHMM(c.estDate || c.date, p[1]))}` : `${short12(toHHMM(p[0]))}-${short12(toHHMM(p[1]))}`;
+      const tip = `${ph && c.estDate ? 'PH ' : ''}${fmtDate(parseYMD(c.date))}${ph && c.estDate ? ' (EST shift date ' + fmtDate(parseYMD(c.estDate)) + ')' : ''} · ` + (off ? 'OFF' : `${convertShiftRange(c.shift)} EST · ${phRange(c.estDate || c.date, p[0], len)} PH`) +
+        (c.shiftChg ? ` · CHANGED (weekly roster: ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)})` : '') +
+        (c.supChg ? ` · supervisor: ${c.sup}` : '') + ` · ${c.att.text}` + (c.att.missed ? ` · ${missedText(c.att)}` : '');
+      const a = c.att, mark = a.kind === 'present' ? '✔' : a.kind === 'upcoming' ? '○' : a.kind === 'off' ? '' : a.code + (a.estimated ? '*' : '');
+      return `<td class="trk-cell rcell st-${a.kind}${c.shiftChg ? ' chg-out' : ''}" title="${esc(tip)}">${text}${mark ? `<small>${esc(mark)}</small>` : ''}</td>`;
+    }).join('');
+    return `<tr class="${supClass(r.Supervisor)}" style="${supStyle(r.Supervisor)}">
+      <td class="trk-name" data-agent="${esc(r.Name)}" title="Open calendar" onclick="rosterPick(this.dataset.agent)">${esc(r.Name)}</td><td class="trk-sum">${chg.length}</td><td class="trk-sum" title="Hours worked / expected">${trackerPct(sum)}</td>${tds}</tr>`;
+  }).join('') || `<tr><td>No agents found</td></tr>`;
+
+  if (view === 'calendar') {
+    const ag = data.find(x => x.r.Name === sel.value);
+    $('rosterCal').innerHTML = ag ? rosterCalendarHtml(ag, viewToday, ph) : '<div class="empty" style="--c:#6c757d">No agents found</div>';
+  }
+  changes.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+  const shownChanges = view === 'calendar' ? changes.filter(c => c.name === sel.value) : changes;
+  const sh = s => isOff(s) ? 'OFF' : convertShiftRange(s);
+  $('rosterChanges').tBodies[0].innerHTML = shownChanges.length ? shownChanges.map(c => `
+    <tr class="${supClass(c.sup)}" style="${supStyle(c.sup)}">
+      <td>${esc(c.name)}</td><td>${fmtDate(parseYMD(c.date))}</td>
+      <td>${sh(c.base)}</td><td><strong>${sh(c.shift)}</strong></td>
+      <td>${esc(c.sup)}${c.supChg ? ' 🔁' : ''}</td></tr>`).join('')
+    : '<tr><td colspan="5">No schedule changes this month</td></tr>';
+
+  const scope = view === 'calendar' ? data.filter(x => x.r.Name === sel.value) : data;
+  const hw = scope.reduce((t, x) => t + x.cells.reduce((a, c) => a + c.att.worked, 0), 0);
+  const he = scope.reduce((t, x) => t + x.cells.reduce((a, c) => a + c.att.exp, 0), 0);
+  $('rosterAttAvg').textContent = he ? (hw / he * 100).toFixed(1) + '%' : '—';
+  $('rosterLegend').innerHTML = TRACKER_LEGEND.map(([k, t]) => `<span class="trk-chip st-${k}">${t}</span>`).join('') +
+    '<span class="trk-chip info" style="box-shadow:inset 0 0 0 2px #7c4dff">🔁 Schedule changed from weekly roster</span>';
+  $('rosterCount').textContent = data.length;
+  $('rosterChangeCount').textContent = shownChanges.length;
 }
 
 /* =====================================================================
@@ -1634,7 +1743,7 @@ function buildTeamView() {
    ===================================================================== */
 const RECORD_COLS = { 'Name': '👤 Agent Name', 'EST Date': '📅 Date', 'Reason': '🚦 Reason', 'Supervisor': '🧑‍💼 Supervisor' };
 const RECORD_VIEWS = {
-  pto: { table: 'ptoTable',      list: () => ptoList,       sup: 'ptoSupervisor',      date: 'ptoDate',      search: 'ptoSearch',      empty: 'No PTO records found' },
+  pto: { table: 'ptoTable',       list: () => ptoList,       sup: 'ptoSupervisor',       date: 'ptoDate',       search: 'ptoSearch',       empty: 'No PTO records found' },
   att: { table: 'calledOffTable', list: () => calledOffList, sup: 'calledOffSupervisor', date: 'calledOffDate', search: 'calledOffSearch', empty: 'No Called Off records found' }
 };
 
@@ -1693,7 +1802,7 @@ function timeEntries() {
 
 function lateRows() {
   return [...timeEntries().values()].map(o => {
-    const r0 = estData.find(a => normName(a.Name) === normName(o.name));
+    const r0 = findAgent(o.name);
     const r = r0 ? rowFor(r0, o.date) : null;
     const shift = r0 ? shiftFor(r0, o.date) : '';
     const p = parseShift(shift);
@@ -1714,7 +1823,7 @@ function buildLateTable() {
   $('lateTable').tBodies[0].innerHTML = rows.length ? rows.map(x => `
     <tr class="${supClass(x.supervisor)}" style="${supStyle(x.supervisor)}">
       <td>${esc(x.name)}</td>
-      <td>${fmtDate(parseYMD(x.date), { month: 'short', day: 'numeric' })}</td>
+      <td>${fmtDate(parseYMD(x.date))}</td>
       <td>${x.shift ? convertShiftRange(x.shift) : '—'}</td>
       <td>${t(x.login)}</td>
       <td>${t(x.logout)}</td>
@@ -1731,7 +1840,8 @@ function buildLateTable() {
 
 /* =====================================================================
    QUALITY ASSURANCE (QA tab)
-   Columns shown: Analyst Name | Score | Ticket Number | Call Date | Supervisor
+   "All Agents": one row per agent (average score + number of audits).
+   One agent selected (or clicked): every audit for that agent.
    ===================================================================== */
 /* Score as a percentage number: "95%", "95", or 0.95 all become 95 */
 const qaPct = v => {
@@ -1775,20 +1885,217 @@ function buildQA() {
       (!q || up(`${x.analyst} ${x.ticket}`).includes(q)))
     .sort((a, b) => b.date.localeCompare(a.date) || a.analyst.localeCompare(b.analyst));
 
-  $('qaTable').tBodies[0].innerHTML = rows.length ? rows.map(x => `
-    <tr class="${supClass(x.supervisor)}" style="${supStyle(x.supervisor)}">
-      <td>${esc(x.analyst)}</td>
-      <td class="qa-score">${x.score == null ? '—' : x.score.toFixed(1) + '%'}</td>
-      <td>${esc(x.ticket) || '—'}</td>
-      <td>${x.date ? fmtDate(parseYMD(x.date), { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-      <td>${esc(x.supervisor)}</td>
-    </tr>`).join('')
-    : '<tr><td colspan="5">No QA records found</td></tr>';
+  const avgOf = list => {
+    const s = list.filter(x => x.score != null);
+    return s.length ? s.reduce((t, x) => t + x.score, 0) / s.length : null;
+  };
+  const fmtScore = v => v == null ? '—' : v.toFixed(1) + '%';
+  const table = $('qaTable'), body = table.tBodies[0];
 
-  const scored = rows.filter(x => x.score != null);
+  if (agent === QA_ALL_AGENTS) {
+    /* One row per agent (rows are already newest-first, so items[0] is the latest audit) */
+    const groups = new Map();
+    rows.forEach(x => {
+      const k = normName(x.analyst);
+      if (!groups.has(k)) groups.set(k, { analyst: x.analyst, supervisor: x.supervisor, items: [] });
+      groups.get(k).items.push(x);
+    });
+    const list = [...groups.values()].sort((a, b) => a.analyst.localeCompare(b.analyst));
+
+    table.tHead.innerHTML = `<tr>
+      <th>👤 Analyst Name</th><th>⭐ Avg Score</th><th>📋 Audits</th>
+      <th>📅 Latest Call Date</th><th>🧑‍💼 Supervisor</th></tr>`;
+
+    body.innerHTML = list.length ? list.map(g => `
+      <tr class="qa-click ${supClass(g.supervisor)}" style="${supStyle(g.supervisor)}"
+          data-agent="${esc(g.analyst)}" onclick="qaPickAgent(this.dataset.agent)" title="Click to see this agent's audits">
+        <td>${esc(g.analyst)}</td>
+        <td class="qa-score">${fmtScore(avgOf(g.items))}</td>
+        <td>${g.items.length}</td>
+        <td>${g.items[0].date ? fmtDate(parseYMD(g.items[0].date)) : '—'}</td>
+        <td>${esc(g.supervisor)}</td>
+      </tr>`).join('')
+      : '<tr><td colspan="5">No QA records found</td></tr>';
+
+    $('qaAgents').textContent = list.length;
+  } else {
+    /* One agent selected: show each audit */
+    table.tHead.innerHTML = `<tr>
+      <th>👤 Analyst Name</th><th>⭐ Score</th><th>🎫 Ticket Number</th>
+      <th>📅 Call Date</th><th>🧑‍💼 Supervisor</th></tr>`;
+
+    body.innerHTML = rows.length ? rows.map(x => `
+      <tr class="${supClass(x.supervisor)}" style="${supStyle(x.supervisor)}">
+        <td>${esc(x.analyst)}</td>
+        <td class="qa-score">${fmtScore(x.score)}</td>
+        <td>${esc(x.ticket) || '—'}</td>
+        <td>${x.date ? fmtDate(parseYMD(x.date)) : '—'}</td>
+        <td>${esc(x.supervisor)}</td>
+      </tr>`).join('')
+      : '<tr><td colspan="5">No QA records found</td></tr>';
+
+    $('qaAgents').textContent = rows.length ? 1 : 0;
+  }
+
   $('qaCount').textContent = rows.length;
-  $('qaAvg').textContent = scored.length
-    ? (scored.reduce((s, x) => s + x.score, 0) / scored.length).toFixed(1) + '%' : '—';
+  $('qaAvg').textContent = fmtScore(avgOf(rows));
+}
+
+/* Clicking an agent in the summary opens that agent's individual audits */
+function qaPickAgent(name) {
+  $('qaAgent').value = name;
+  buildQA();
+}
+
+/* =====================================================================
+   OVERALL METRIC SCORECARD ("metric scorecard" tab)
+   Month picker: tick one or more months, or "Year to date" (= every month in the sheet).
+   With 2+ months the scores are averaged per agent (ignoring "No Data").
+   ===================================================================== */
+/* Sortable value: "No Data"/blank -> null, h:mm:ss -> seconds, 48.97% -> 48.97 */
+function metricVal(v) {
+  if (!v || /no data/i.test(v)) return null;
+  if (v.includes(':')) return v.split(':').reduce((s, p) => s * 60 + (parseFloat(p) || 0), 0);
+  const n = parseFloat(v.replace(/[%,]/g, ''));
+  return isNaN(n) ? v.toLowerCase() : n;
+}
+
+let metricSel = new Set(), metricSelInit = false;
+const metricMonthList = () => metricIdx.month >= 0 ? [...new Set(metricRows.map(r => r[metricIdx.month]).filter(Boolean))] : [];
+
+/* Work out how to average / re-format each column */
+function metricColKind(i) {
+  const vals = metricRows.map(r => r[i]).filter(v => v && !/no data/i.test(v));
+  if (!vals.length) return { kind: 'text' };
+  if (vals.every(v => /^\d+:\d{2}(:\d{2})?$/.test(v))) return { kind: 'time', colons: Math.max(...vals.map(v => v.split(':').length - 1)) };
+  if (vals.every(v => /^-?\d+(\.\d+)?%$/.test(v))) return { kind: 'pct' };
+  if (vals.every(v => !isNaN(parseFloat(v.replace(/,/g, ''))) && /^-?[\d,.]+$/.test(v))) return { kind: 'num' };
+  return { kind: 'text' };
+}
+
+/* One row per agent, averaged over the selected months */
+function metricAggregate(rowsIn) {
+  const I = metricIdx, rank = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? metricMonthList().indexOf(m) : t; };
+  const kinds = metricHeads.map((_, i) => metricColKind(i));
+  const byAgent = new Map();
+  rowsIn.forEach(r => { const k = normName(r[I.agent]); if (!byAgent.has(k)) byAgent.set(k, []); byAgent.get(k).push(r); });
+
+  return [...byAgent.values()].map(list => {
+    list.sort((a, b) => rank(a[I.month]) - rank(b[I.month]));      // oldest -> newest
+    const out = metricHeads.map((_, i) => {
+      if (i === I.month) return '';
+      if (i === I.agent) return list[list.length - 1][i];
+      if (i === I.sup) return [...list].reverse().map(r => r[i]).find(Boolean) || '';
+      const k = kinds[i];
+      if (k.kind === 'text') {
+        return list.filter(r => r[i]).map(r => `${r[I.month]}: ${r[i]}`).join(' • ');
+      }
+      const nums = list.map(r => metricVal(r[i])).filter(v => typeof v === 'number');
+      if (!nums.length) return 'No Data';
+      const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+      if (k.kind === 'pct') return avg.toFixed(2) + '%';
+      if (k.kind === 'num') return avg.toFixed(2);
+      const s = Math.round(avg);
+      return k.colons >= 2 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s % 3600 / 60))}:${pad(s % 60)}`
+                           : `${Math.floor(s / 60)}:${pad(s % 60)}`;
+    });
+    out._n = list.length;
+    return out;
+  });
+}
+
+function renderMetricMonthPicker(months) {
+  const allOn = months.length > 1 && months.every(m => metricSel.has(m));
+  $('metricMonthPanel').innerHTML =
+    `<label class="ytd"><input type="checkbox" data-ytd ${allOn ? 'checked' : ''}> 📅 Year to date</label>` +
+    months.map(m => `<label><input type="checkbox" data-m="${esc(m)}" ${metricSel.has(m) ? 'checked' : ''}> ${esc(m)}</label>`).join('');
+  $('metricMonthBtn').textContent = (allOn ? 'Year to date' : metricSel.size === 1 ? [...metricSel][0] : `${metricSel.size} months`) + ' ▾';
+}
+
+function initMetricMonth() {
+  $('metricMonthBtn').addEventListener('click', e => { e.stopPropagation(); $('metricMonthPanel').hidden = !$('metricMonthPanel').hidden; });
+  $('metricMonthWrap').addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => $('metricMonthPanel').hidden = true);
+  $('metricMonthPanel').addEventListener('change', e => {
+    const t = e.target, months = metricMonthList();
+    if (t.dataset.ytd !== undefined) {
+      metricSel = t.checked ? new Set(months) : new Set([months[months.length - 1]]);
+    } else if (t.dataset.m) {
+      t.checked ? metricSel.add(t.dataset.m) : metricSel.delete(t.dataset.m);
+      if (!metricSel.size) metricSel.add(t.dataset.m);              // always keep at least one month
+    }
+    buildMetric();
+  });
+}
+
+function buildMetric() {
+  const table = $('metricTable');
+  if (!metricHeads.length) {
+    table.tHead.innerHTML = '';
+    table.tBodies[0].innerHTML = '<tr><td>No metric scorecard data loaded</td></tr>';
+    $('metricCount').textContent = 0;
+    $('metricAvg').textContent = '—';
+    return;
+  }
+  const I = metricIdx;
+  const supOf = r => (I.sup >= 0 ? r[I.sup] : '') || findAgent(r[I.agent])?.Supervisor || '';
+
+  /* Month picker: default = last month in the sheet (same as before) */
+  const months = metricMonthList();
+  if (!metricSelInit && months.length) { metricSel = new Set([months[months.length - 1]]); metricSelInit = true; }
+  metricSel = new Set([...metricSel].filter(m => months.includes(m)));
+  if (!metricSel.size && months.length) metricSel.add(months[months.length - 1]);
+  $('metricMonthWrap').hidden = !months.length;
+  renderMetricMonthPicker(months);
+
+  const inMonth = metricRows.filter(r => !months.length || metricSel.has(r[I.month]));
+  const data = metricSel.size > 1 ? metricAggregate(inMonth) : inMonth;
+
+  /* Supervisor dropdown follows the selected months */
+  const supSel = $('metricSupervisor'), prevSup = supSel.value;
+  const sups = [...new Set(data.map(supOf).filter(Boolean))].sort();
+  supSel.innerHTML = `<option>${ALL}</option>` + sups.map(s => `<option>${esc(s)}</option>`).join('');
+  if (sups.includes(prevSup)) supSel.value = prevSup;
+  const sup = supSel.value, q = up($('metricSearch').value);
+
+  const rows = data.filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
+
+  const { col, asc } = sortState.metric;
+  if (col >= 0) {
+    const dir = asc ? 1 : -1;
+    rows.sort((a, b) => {
+      const x = metricVal(a[col]), y = metricVal(b[col]);
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;                    // No Data always last
+      if (y == null) return -1;
+      return dir * (typeof x === 'string' || typeof y === 'string'
+        ? String(x).localeCompare(String(y)) : x - y);
+    });
+  }
+
+  /* Month is shown in the picker, so it is not repeated as a column */
+  const cols = metricHeads.map((_, i) => i).filter(i => i !== I.month && !/^(remarks?|site)$/i.test(metricHeads[i]));
+  const isPct = v => /^\d+(\.\d+)?%$/.test(v || '');
+  table.tHead.innerHTML = '<tr>' + cols.map(i =>
+    `<th onclick="sortBy('metric',${i})">${esc(metricHeads[i])}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`
+  ).join('') + '</tr>';
+
+  table.tBodies[0].innerHTML = rows.length ? rows.map((r, n) => {
+    const sc = supOf(r);
+    return `<tr class="${supClass(sc)}" style="${supStyle(sc)}">` + cols.map(i => {
+      const v = r[i];
+      if (i === I.agent) {
+        const tag = r._n && r._n < metricSel.size ? ` <small class="mo" title="Averaged over the months this agent has data">(${r._n}/${metricSel.size} mo)</small>` : '';
+        return `<td><span class="rank">${n + 1}.</span> ${esc(v)}${tag}</td>`;
+      }
+      if (/no data/i.test(v)) return `<td class="nodata">No Data</td>`;
+      return `<td class="${i === I.total ? 'overall' : ''}">${esc(v) || '—'}</td>`;
+    }).join('') + '</tr>';
+  }).join('') : `<tr><td colspan="${cols.length}">No agents found</td></tr>`;
+
+  const totals = I.total >= 0 ? rows.map(r => metricVal(r[I.total])).filter(v => typeof v === 'number') : [];
+  $('metricCount').textContent = rows.length;
+  $('metricAvg').textContent = totals.length ? (totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(2) : '—';
 }
 
 /* =====================================================================
@@ -1821,26 +2128,19 @@ const getMinTarget = () => {
   const v = parseInt(document.querySelector('.minTargetInput')?.value);
   return isNaN(v) ? 0 : Math.max(0, v);
 };
-
-function targetFor(time) {
-  const m = tm(time);
-  const o = TARGET_OVERRIDES.find(r => {
-    const f = tm(r.from), t = tm(r.to);
-    return f <= t ? (m >= f && m < t) : (m >= f || m < t);
-  });
-  return o ? o.min : getMinTarget();
-}
+const targetFor = getMinTarget;
 
 function initMinTarget() {
   let saved = null;
   try { saved = localStorage.getItem(TARGET_KEY); } catch (e) {}
   const inputs = document.querySelectorAll('.minTargetInput');
   inputs.forEach(i => {
-    i.value = saved ?? DEFAULT_MIN_AGENTS;
+    i.value = saved ?? 0;
     i.addEventListener('input', () => {
       inputs.forEach(o => { if (o !== i) o.value = i.value; });
       try { localStorage.setItem(TARGET_KEY, i.value); } catch (e) {}
       runLookup();
+      refreshForecast();
     });
   });
 }
@@ -2037,7 +2337,7 @@ const trackerPct = c => c.pct == null ? '—' : c.pct.toFixed(1) + '%';
 const missedText = x => x.missed ? `${x.missed} min missed${x.estimated ? ' (est. half shift)' : ''}` : '';
 
 const trackerTip = x =>
-  `${fmtDate(parseYMD(x.date), { weekday: 'short', month: 'short', day: 'numeric' })} · ${x.text}` +
+  `${fmtDate(parseYMD(x.date))} · ${x.text}` +
   (x.reason && up(x.reason) !== up(x.text) ? ` (${x.reason})` : '') +
   (x.shift ? ` · ${convertShiftRange(x.shift)}` : '') +
   (x.missed ? ` · ${missedText(x)}` : '') +
@@ -2099,7 +2399,7 @@ function trackerGridHtml(rows, monthOf, days, today) {
       ${cells}</tr>`;
   }).join('');
 
-  return `<div class="panel"><div class="schedule-container"><table class="trk-table trk-grid">
+  return `<div class="panel"><div class="schedule-container"><table class="nosort trk-grid">
     <thead><tr><th>👤 Agent</th><th title="Expected days">Exp</th><th title="Present">✔</th><th title="Late / Left early">◐</th><th title="Called off / NCNS">✖</th><th title="Leave">🌴</th><th class="sortable" onclick="toggleTrackerPctSort()" title="Click to sort by attendance % (lowest first, highest first, then by name)">%${sortArrow}</th>${head}</tr></thead>
     <tbody>${body}</tbody></table></div></div>`;
 }
@@ -2118,23 +2418,6 @@ function trackerCalendarHtml(info, today) {
       ${x.shift ? `<div class="cal-shift">${convertShiftRange(x.shift)}</div>` : ''}${note}</div>`;
   }).join('');
   return `<div class="panel"><div class="cal">${dows}${'<div></div>'.repeat(lead)}${cells}</div></div>`;
-}
-
-function trackerListHtml(info) {
-  const rows = info.map(x => {
-    const dt = parseYMD(x.date);
-    const sched = x.kind === 'off' ? 'OFF' : `Expected · ${convertShiftRange(x.shift)}`;
-    const showText = ['absent', 'leave', 'partial'].includes(x.kind) ? x.text : TRACKER_STATUS[x.kind].label;
-    const att = x.kind === 'off' ? '–' : `<span class="trk-chip st-${x.kind}">${x.icon} ${esc(showText)}</span>`;
-    const details = [x.reason, missedText(x),
-                     x.inTime ? `login ${x.inTime}` : '', x.outTime ? `logout ${x.outTime}` : ''].filter(Boolean).join(' · ');
-    return `<tr class="${x.kind === 'off' ? 'roster-off' : ''}">
-      <td>${fmtDate(dt, { month: 'long', day: 'numeric' })}</td><td>${DAYS[dt.getDay()]}</td>
-      <td>${sched}</td><td>${att}</td><td>${esc(details)}</td></tr>`;
-  }).join('');
-  return `<div class="panel"><div class="schedule-container"><table class="trk-table">
-    <thead><tr><th>📅 Date</th><th>Day</th><th>🗓️ Schedule</th><th>🚦 Attendance</th><th>📝 Details</th></tr></thead>
-    <tbody>${rows}</tbody></table></div></div>`;
 }
 
 function buildTracker() {
@@ -2174,7 +2457,7 @@ function buildTracker() {
   const agent = roster.find(r => r.Name === sel.value) || roster[0];
   if (!agent) { body.innerHTML = '<div class="empty" style="--c:#6c757d">No agents found</div>'; return; }
   const info = monthOf(agent);
-  body.innerHTML = trackerHeaderHtml(agent, info) + (view === 'calendar' ? trackerCalendarHtml(info, today) : trackerListHtml(info));
+  body.innerHTML = trackerHeaderHtml(agent, info) + trackerCalendarHtml(info, today);
 }
 
 /* Download the attendance grid as CSV (respects month, supervisor and search filters) */
@@ -2280,19 +2563,20 @@ window.addEventListener('load', async () => {
   initMinTarget();
   initMenus();
   initTracker();
+  initMetricMonth();
 
   const today = ymd(estNow());
-  ['selectedDate', 'ptoDate', 'scheduleDate'].forEach(id => $(id).value = today);
+  ['selectedDate', 'ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate', 'forecastDate']
+    .forEach(id => $(id).value = today);
   $('trackerMonth').value = today.slice(0, 7);
 
-  await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA()]);
+  await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadMetric()]);
   renderAll();
 
   updateClock();
   setInterval(updateClock, 1000);
   setInterval(() => refreshAttendanceData(false), REFRESH_MS);
 });
-
 </script>
 </body>
 </html>
