@@ -312,7 +312,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <div class="dropdown"><button class="tab-btn">Scorecard ▾</button>
       <div class="dropdown-content">
         <a href="#" data-tab="metricTab">Performance Stack Ranking</a>
-        <a href="#" data-tab="mcsTab">Metric Scorecard</a>
+        <a href="#" data-tab="mcsTab">Overall Metric Scorecard</a>
       </div></div>
     <div class="dropdown"><button class="tab-btn" data-tab="missingTab">Missing Agent Checker</button></div>
   </nav>
@@ -2230,7 +2230,7 @@ const MCS_COLS = ['Agent Name', 'Calls Handled', 'Tickets Opened', 'AHT', 'QA', 
 const mcsKey = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 let mcsHeads = [], mcsRows = [], mcsCols = [], mcsMissing = [], mcsI = { month: -1, agent: -1, sup: -1 };
 
-const loadMcs = () => guard('mcs', "Couldn't load the Metric Scorecard tab", async () => {
+const loadMcs = () => guard('mcs', "Couldn't load the Overall Metric Scorecard tab", async () => {
   const rows = await fetchCSV(URLS.agentScores, { raw: true });
   const h = rows.findIndex(r => r.some(c => mcsKey(c) === 'agentname'));
   if (h < 0) throw new Error('no "Agent Name" header found - check the tab gid and sharing');
@@ -2254,7 +2254,7 @@ function buildMcs() {
   $('mcsNote').innerHTML = mcsMissing.length ? '⚠️ Not found in the sheet: ' + mcsMissing.map(esc).join(', ') + '. Check the column names.' : '';
   if (!mcsHeads.length) {
     table.tHead.innerHTML = '';
-    table.tBodies[0].innerHTML = '<tr><td>No metric scorecard data loaded</td></tr>';
+    table.tBodies[0].innerHTML = '<tr><td>No overall metric scorecard data loaded</td></tr>';
     $('mcsCount').textContent = 0;
     return;
   }
