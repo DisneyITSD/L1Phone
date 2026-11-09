@@ -2036,14 +2036,16 @@ function initMcsMonth() {
 }
 
 /* Combine several months into one row per agent:
-   - counts (calls, tickets, misroutes, PTO, points, FCR, instances) and "Total Time" columns are ADDED UP
-   - percentages (QA, Working Rate, Occupancy, Compliance) and other times (ATT, Avg / Call) are AVERAGED
-   - AHT is averaged weighted by Calls Handled, so a busy month counts for more
+   - the columns listed in MCS_SUM are ADDED UP
+   - every other column (percentages, times, rates, misroutes, FCR ...) is AVERAGED
    "No Data" / blank months are ignored. */
+const MCS_SUM = ['Calls Handled', 'Tickets Opened', 'Wrap Up Time - Instances', 'Wrap Up Time - Total Time',
+  'Extended Wrap up Time - Instances', 'Extended Wrap up Time - Total Time', 'Activity Code - Restroom - Instances',
+  'Restroom Total Time', 'Refused Calls', 'PTO Used'].map(mcsKey);
+const mcsIsSum = h => { const k = mcsKey(h); return MCS_SUM.some(s => k === s || (s.length > 4 && k.startsWith(s))); };
 function mcsAggregate(rowsIn) {
   const I = mcsI, rank = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? 0 : t; };
   const kinds = mcsHeads.map((_, i) => metricColKind(i, mcsRows));
-  const callsI = mcsHeads.findIndex(h => mcsKey(h) === 'callshandled');
   const by = new Map();
   rowsIn.forEach(r => { const k = normName(r[I.agent]); if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
 
@@ -2058,11 +2060,8 @@ function mcsAggregate(rowsIn) {
       const pairs = list.map(r => [metricVal(r[i]), r]).filter(p => typeof p[0] === 'number');
       if (!pairs.length) return list.some(r => /no data/i.test(r[i])) ? 'No Data' : '';
       let v;
-      if (k.kind !== 'pct' && (k.kind === 'num' || /total|instances|count/i.test(h))) {
+      if (mcsIsSum(h)) {
         v = pairs.reduce((a, p) => a + p[0], 0);
-      } else if (mcsKey(h) === 'aht' && callsI >= 0) {
-        const w = pairs.map(p => Math.max(0, metricVal(p[1][callsI]) || 0)), wt = w.reduce((a, b) => a + b, 0);
-        v = wt ? pairs.reduce((a, p, n) => a + p[0] * w[n], 0) / wt : pairs.reduce((a, p) => a + p[0], 0) / pairs.length;
       } else {
         v = pairs.reduce((a, p) => a + p[0], 0) / pairs.length;
       }
