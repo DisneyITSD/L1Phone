@@ -2225,7 +2225,7 @@ function buildMetric() {
    Only the columns listed in MCS_COLS are shown, whatever else the sheet holds.
    Headers are matched by name (ignoring case, spaces and punctuation), so column order in the sheet doesn't matter.
    ===================================================================== */
-const MCS_COLS = ['Agent Name', 'Supervisor', 'Calls Handled', 'Tickets Opened', 'AHT', 'QA', 'Working Rate', 'Occupancy',
+const MCS_COLS = ['Agent Name', 'Calls Handled', 'Tickets Opened', 'AHT', 'QA', 'Working Rate', 'Occupancy',
   'Attendance Current Month CO/LE/RL Points', 'PTO Used', 'Compliance', 'Misroutes', 'FCR Count (First Contact Resolution)'];
 const mcsKey = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 let mcsHeads = [], mcsRows = [], mcsCols = [], mcsMissing = [], mcsI = { month: -1, agent: -1, sup: -1 };
