@@ -311,9 +311,9 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
       </div></div>
     <div class="dropdown"><button class="tab-btn">Scorecard ▾</button>
       <div class="dropdown-content">
-         <a href="#" data-tab="mcsTab">Overall Metric Scorecard</a>
         <a href="#" data-tab="metricTab">Performance Stack Ranking</a>
-        </div></div>
+        <a href="#" data-tab="mcsTab">Overall Metric Scorecard</a>
+      </div></div>
     <div class="dropdown"><button class="tab-btn" data-tab="missingTab">Missing Agent Checker</button></div>
   </nav>
 
@@ -1170,6 +1170,23 @@ function isWithinShift(record, roster) {
   return now >= start && now < end;
 }
 
+/* A "Running Late" record stops showing once the agent's actual login has been entered (ATTENDANCE TIME tab)
+   and that login time has arrived: they are on the phones, so they count as Working again.
+   Before the login time (e.g. when looking at an earlier interval) they still show as late. */
+function hasLoggedIn(record, roster) {
+  if (matchType(ATT_TYPES, record.Reason, ATT_OTHER).code !== 'LATE') return false;
+  const date = normalizeDate(record['EST Date']);
+  const inT = parseClock(timeEntries().get(normName(record.Name) + '|' + date)?.login);
+  const shift = parseShift(shiftFor(roster, date));
+  if (inT == null || !shift) return false;
+
+  const loginAt = parseYMD(date).getTime() + (shift[0] + clockDiff(inT, shift[0])) * 60000;
+  const now = realtimeMode
+    ? estNow().getTime()
+    : parseYMD($('selectedDate').value).getTime() + im($('interval').value) * 60000;
+  return now >= loginAt;
+}
+
 function getAgentState(r, day, date) {
   const off = isOff(r[day]);
   let state = off
@@ -1243,7 +1260,7 @@ function runLookup() {
       return;
     }
     const co = calledOffList.find(x => normName(x.Name) === normName(r.Name) && isWithinShift(x, r));
-    if (co) {
+    if (co && !hasLoggedIn(co, r)) {
       calledOff.push({ name: r.Name, reason: co.Reason || 'No Reason Provided' });
       return;
     }
