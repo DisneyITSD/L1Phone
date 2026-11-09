@@ -303,7 +303,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   <span id="liveClock">--:--:--</span>
 
   <nav class="tabs">
-    <div class="dropdown"><a class="tab-btn active" href="#lookupTab" data-tab="lookupTab">Dashboard</a></div>
     <div class="dropdown"><button class="tab-btn">Schedule ▾</button>
       <div class="dropdown-content">
         <a href="#scheduleTab" data-tab="scheduleTab">Daily view</a>
@@ -325,57 +324,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 
 <div id="statusBanner" class="note red" hidden></div>
 <div id="highAnnouncements" class="note red" style="margin:10px 16px 0;white-space:pre-wrap" hidden></div>
-
-<!-- ============ DASHBOARD ============ -->
-<section class="tab-panel" id="lookupTab">
-  <div class="controls">
-    <input type="date" id="selectedDate">
-    <select id="interval"></select>
-    <select id="supervisor"><option>All Supervisors</option></select>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:600">🎯 Min agents <input type="number" min="0" class="minTargetInput"></label>
-    <button id="showStaffingBtn" onclick="runLookup()">Show Staffing</button>
-    <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh Attendance</button>
-  </div>
-
-  <div class="cards stats">
-    <div class="card stat" id="workingCard" style="--c:#28a745" data-tab="scheduleTab"><h3>👷 Working</h3><div class="value" id="workingCount">0</div><div class="pct" id="staffingPercent">0%</div><div class="pct" id="targetNote"></div></div>
-    <div class="card stat" style="--c:#ff9800" data-tab="scheduleTab"><h3>☕ Break</h3><div class="value" id="breakCount">0</div><div class="pct" id="breakPercent">0%</div></div>
-    <div class="card stat" style="--c:#dc3545" data-tab="scheduleTab"><h3>🍽️ Lunch</h3><div class="value" id="lunchCount">0</div><div class="pct" id="lunchPercent">0%</div></div>
-    <div class="card stat" style="--c:#17a2b8"><h3>🗓️ Leave</h3><div class="value" id="ptoCount">0</div><div class="pct" id="ptoPercent">0%</div></div>
-    <div class="card stat" style="--c:#dc3545"><h3>🚫 Absent</h3><div class="value" id="calledOffCount">0</div><div class="pct" id="attendancePercent">0%</div></div>
-  </div>
-
-  <div class="panels">
-    <div class="panel"><h3>👷 Working</h3><ul id="workingList"></ul></div>
-    <div class="panel">
-      <h3>☕ Break</h3>
-      <ul id="breakList"></ul>
-      <hr>
-      <h4>⏩☕ Upcoming Breaks</h4>
-      <ul id="upcomingBreakList"></ul>
-    </div>
-
-    <div class="panel">
-      <h3>🍽️Lunch</h3>
-      <ul id="lunchList"></ul>
-      <hr>
-      <h4>⏩ 🍽️ Upcoming Lunches</h4>
-      <ul id="upcomingLunchList"></ul>
-    </div>
-    <div class="panel"><h3>📋 Leave</h3><div id="ptoList"></div></div>
-    <div class="panel"><h3>🚫 Absenteeism</h3><div id="calledOffList"></div></div>
-  </div>
-
-  <div class="panel shift-panel">
-    <h3>🔄 Next 2 Hours: Shift Changes <span id="shiftWindowLabel" style="font-weight:400;font-size:13px;color:#6b7280"></span></h3>
-    <div class="two-col">
-      <div><h4>🟢 Coming on</h4><ul id="comingOnList"></ul></div>
-      <div><h4>🔴 Going off</h4><ul id="goingOffList"></ul></div>
-    </div>
-    <h4>📊 Projected headcount (vs. minimum)</h4>
-    <div id="projectionRow"></div>
-  </div>
-</section>
 
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <section class="tab-panel" id="supervisorTab" hidden>
@@ -734,7 +682,7 @@ let ptoList = [], calledOffList = [], announcementList = [], attTimeList = [], q
 let dailyMap = new Map();
 let currentWorkingAgents = [];
 let realtimeMode = false, realtimeTimer = null;
-let activeTab = 'lookupTab';
+let activeTab = 'scheduleTab';
 let metricHeads = [], metricWeights = [], metricRows = [];
 let metricIdx = { month: -1, agent: 0, sup: -1, total: -1 }, metricSortSet = false;
 
@@ -1066,7 +1014,6 @@ async function refreshAttendanceData(notify = false) {
 }
 
 const TAB_RENDERERS = {
-  lookupTab: runLookup,
   scheduleTab: buildScheduleView,
   rosterTab: buildRosterView,
   teamTab: buildTeamView,
@@ -1086,12 +1033,12 @@ function renderAll() {
   loadSup();
   renderHighAnnouncements();
   runLookup();
-  if (activeTab !== 'lookupTab') TAB_RENDERERS[activeTab]?.();
+  TAB_RENDERERS[activeTab]?.();
 }
 
 function loadSup() {
   const options = `<option>${ALL}</option>` + uniqueSupervisors().map(s => `<option>${esc(s)}</option>`).join('');
-  ['supervisor', 'scheduleSupervisor', 'ptoSupervisor', 'calledOffSupervisor', 'lateSupervisor', 'rosterSupervisor', 'trackerSupervisor', 'teamSupervisor']
+  ['scheduleSupervisor', 'ptoSupervisor', 'calledOffSupervisor', 'lateSupervisor', 'rosterSupervisor', 'trackerSupervisor', 'teamSupervisor']
     .forEach(id => {
       const el = $(id), prev = el.value;
       el.innerHTML = options;
@@ -1107,7 +1054,6 @@ function toggleRealtime() {
   $('realtimeBtn').innerHTML = realtimeMode ? '🔴 Stop Live Mode' : '🟢 Live Mode';
   $('realtimeBtn').classList.toggle('on', realtimeMode);
   $('missingCheckBtn').disabled = !realtimeMode;
-  ['selectedDate', 'interval', 'supervisor', 'showStaffingBtn'].forEach(id => $(id).disabled = realtimeMode);
 
   clearInterval(realtimeTimer);
   if (realtimeMode) {
@@ -1118,8 +1064,7 @@ function toggleRealtime() {
 
 function updateRealtime() {
   const now = estNow(), today = ymd(now);
-  ['selectedDate', 'ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate'].forEach(id => $(id).value = today);
-  $('interval').value = `${pad(now.getHours())}:${now.getMinutes() >= 30 ? '30' : '00'}`;
+  ['ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate'].forEach(id => $(id).value = today);
   renderAll();
 }
 
@@ -1161,9 +1106,10 @@ function getStatus(r, date, time) {
   return 'Working';
 }
 
+/* The working list is always for the current EST date and time */
 function lookupMinutes() {
-  if (realtimeMode) { const n = estNow(); return n.getHours() * 60 + n.getMinutes(); }
-  return im($('interval').value);
+  const n = estNow();
+  return n.getHours() * 60 + n.getMinutes();
 }
 
 function isWithinShift(record, roster) {
@@ -1177,10 +1123,7 @@ function isWithinShift(record, roster) {
   let end = base + shift[1] * 60000;
   if (end <= start) end += 86400000;
 
-  const lookupDate = $('selectedDate').value;
-  const now = realtimeMode
-    ? estNow().getTime()
-    : parseYMD(lookupDate).getTime() + im($('interval').value) * 60000;
+  const now = estNow().getTime();
 
   return now >= start && now < end;
 }
@@ -1196,9 +1139,7 @@ function hasLoggedIn(record, roster) {
   if (inT == null || !shift) return false;
 
   const loginAt = parseYMD(date).getTime() + (shift[0] + clockDiff(inT, shift[0])) * 60000;
-  const now = realtimeMode
-    ? estNow().getTime()
-    : parseYMD($('selectedDate').value).getTime() + im($('interval').value) * 60000;
+  const now = estNow().getTime();
   return now >= loginAt;
 }
 
@@ -1247,86 +1188,35 @@ function groupedBlocks(items, types, fallback, useReasonAsHeader) {
   }).join('');
 }
 
+/* Builds the list of agents working right now (used by the Missing Agent Checker) */
 function runLookup() {
-  const date = $('selectedDate').value;
-  if (!date) return;
-  const supFilter = $('supervisor').value;
+  const date = ymd(estNow());
   const mins = lookupMinutes();
   const time = toHHMM(mins);
-
-  const w = [], b = [], l = [], pto = [], calledOff = [], upBreaks = [], upLunches = [];
+  const w = [];
 
   estData.forEach(r0 => {
     const r = rowFor(r0, date);
 
     /* Leave: check the PTO record dated today AND (if yesterday's shift ran
-       overnight) the one dated yesterday, and use whichever is active right now.
-       Checking both fixes agents showing as Working when a PTO for tonight's
-       shift exists while last night's shift is still running. */
+       overnight) the one dated yesterday, and use whichever is active right now. */
     const prevShift = parseShift(shiftFor(r, addDays(date, -1)));
     const overnight = prevShift && prevShift[1] < prevShift[0];
     const p = [
       recFor(ptoList, r.Name, date),
       overnight ? recFor(ptoList, r.Name, addDays(date, -1)) : null
     ].find(x => x && isWithinShift(x, r));
+    if (p) return;
 
-    if (p) {
-      pto.push({ name: p.Name, reason: p.Reason || 'Leave' });
-      return;
-    }
     const co = calledOffList.find(x => normName(x.Name) === normName(r.Name) && isWithinShift(x, r));
-    if (co && !hasLoggedIn(co, r)) {
-      calledOff.push({ name: r.Name, reason: co.Reason || 'No Reason Provided' });
-      return;
-    }
+    if (co && !hasLoggedIn(co, r)) return;
 
     const st = getStatus(r, date, time);
-    if (!st) return;
-    if (supFilter !== ALL && r.Supervisor !== supFilter) return;
-
-    [r['Break 1'], r['Break 2'], r['Break 3']].forEach(br => {
-      const bt = tm(br);
-      if (bt != null && bt > mins && bt <= mins + 30) upBreaks.push({ name: r.Name, time: fmtAMPM(toHHMM(bt)), ph: phTime(date, bt) });
-    });
-    const lt = tm(r['Lunch']);
-    if (lt != null && lt > mins && lt <= mins + 30) upLunches.push({ name: r.Name, time: fmtAMPM(toHHMM(lt)), ph: phTime(date, lt) });
-
-    w.push({ name: r.Name, type: st.toLowerCase() });
-    if (st === 'Break') {
-      const bt = [r['Break 1'], r['Break 2'], r['Break 3']].find(x => { const t = tm(x); return t != null && mins >= t && mins < t + 15; });
-      b.push({ name: r.Name, time: formatTimeRange(bt, 15), ph: phRange(date, tm(bt), 15) });
-    }
-    if (st === 'Lunch') l.push({ name: r.Name, time: formatTimeRange(r['Lunch'], 60), ph: phRange(date, tm(r['Lunch']), 60) });
+    if (st) w.push(r.Name);
   });
 
-  const total = w.length + pto.length + calledOff.length;
-  const pct = n => (total ? ((n / total) * 100).toFixed(1) : 0) + '% of team';
-  [['workingCount', 'staffingPercent', w.length], ['breakCount', 'breakPercent', b.length],
-   ['lunchCount', 'lunchPercent', l.length], ['ptoCount', 'ptoPercent', pto.length],
-   ['calledOffCount', 'attendancePercent', calledOff.length]]
-    .forEach(([countId, pctId, n]) => { $(countId).textContent = n; $(pctId).textContent = pct(n); });
-
-  const order = { working: 1, break: 2, lunch: 3 };
-  w.sort((x, y) => order[x.type] - order[y.type] || x.name.localeCompare(y.name));
-  currentWorkingAgents = w.map(x => up(x.name));
-
-  $('workingList').innerHTML = w.map(x => `<li class="${x.type}">${esc(x.name)}</li>`).join('');
-  $('breakList').innerHTML = b.length ? b.map(x => nameTimeItem('break', x)).join('') : emptyItem('#ff9800', '☕ No ongoing breaks');
-  $('lunchList').innerHTML = l.length ? l.map(x => nameTimeItem('lunch', x)).join('') : emptyItem('#dc3545', '🍽️ No ongoing lunches');
-  $('upcomingBreakList').innerHTML = upBreaks.length ? upBreaks.map(x => nameTimeItem('', x)).join('') : emptyItem('#ff9800', '☕ No upcoming breaks');
-  $('upcomingLunchList').innerHTML = upLunches.length ? upLunches.map(x => nameTimeItem('', x)).join('') : emptyItem('#dc3545', '🍽️ No upcoming lunches');
-  $('ptoList').innerHTML = groupedBlocks(pto, PTO_TYPES, { ...PTO_OTHER, label: 'Leave' }, true);
-  $('calledOffList').innerHTML = groupedBlocks(calledOff, ATT_TYPES, ATT_OTHER, true);
-
-  const dip = buildShiftChanges(date, mins, supFilter);
-  const target = supFilter === ALL ? targetFor(time) : 0;
-  const lowNow = target > 0 && w.length < target;
-  $('workingCard').classList.toggle('alert', lowNow);
-  $('workingCard').classList.toggle('warn', !lowNow && !!dip);
-  $('targetNote').textContent = !target ? ''
-    : lowNow ? `⚠️ Below minimum (${w.length}/${target})`
-    : dip ? `⚠️ Dip ahead: ${dip.label} (${dip.count}/${dip.target})`
-    : `✔ Target ${target}`;
+  w.sort((x, y) => x.localeCompare(y));
+  currentWorkingAgents = w.map(x => up(x));
 }
 
 /* =====================================================================
@@ -2391,45 +2281,6 @@ function shiftsAround(r, date) {
   return out;
 }
 
-function buildShiftChanges(date, mins, supFilter) {
-  const WINDOW = 120;
-  const people = estData
-    .filter(r => supFilter === ALL || r.Supervisor === supFilter)
-    .map(r => ({
-      r,
-      shifts: shiftsAround(r, date).filter(s => !recFor(ptoList, r.Name, s.date) && !recFor(calledOffList, r.Name, s.date))
-    }));
-
-  const coming = [], going = [];
-  people.forEach(({ r, shifts }) => shifts.forEach(s => {
-    if (s.start > mins && s.start <= mins + WINDOW) coming.push({ name: r.Name, t: s.start });
-    if (s.start <= mins && s.end > mins && s.end <= mins + WINDOW) going.push({ name: r.Name, t: s.end });
-  }));
-
-  const fmt = t => fmtAMPM(toHHMM(t)) + (t >= 1440 ? ' (next day)' : '');
-  const li = (x, verb) => `<li><strong>${esc(x.name)}</strong><br><small>${verb} ${fmt(x.t)} EST</small>${phLine(phTime(date, x.t))}</li>`;
-  const byTime = (a, b) => a.t - b.t || a.name.localeCompare(b.name);
-
-  $('comingOnList').innerHTML = coming.length
-    ? coming.sort(byTime).map(x => li(x, 'starts')).join('') : emptyItem('#28a745', 'No one starting');
-  $('goingOffList').innerHTML = going.length
-    ? going.sort(byTime).map(x => li(x, 'ends')).join('') : emptyItem('#dc3545', 'No one finishing');
-  $('shiftWindowLabel').textContent = `(${fmtAMPM(toHHMM(mins))} – ${fmtAMPM(toHHMM(mins + WINDOW))})`;
-
-  const chips = [];
-  let dip = null;
-  const first = Math.floor(mins / 30) * 30;
-  for (let t = first; t <= first + WINDOW; t += 30) {
-    const count = people.filter(p => p.shifts.some(s => s.start <= t && t < s.end)).length;
-    const target = supFilter === ALL ? targetFor(toHHMM(t)) : 0;
-    const bad = target > 0 && count < target;
-    if (bad && t > mins && !dip) dip = { label: fmtAMPM(toHHMM(t)), count, target };
-    chips.push(`<span class="chip${bad ? ' bad' : ''}">${fmtAMPM(toHHMM(t))} · <strong>${count}</strong>${target > 0 ? ` / ${target}` : ''}</span>`);
-  }
-  $('projectionRow').innerHTML = chips.join('');
-  return dip;
-}
-
 /* =====================================================================
    SCORECARD > ATTENDANCE
    Every scheduled day of the month is classified for each agent:
@@ -2780,27 +2631,17 @@ function toast(t) {
 /* =====================================================================
    INIT
    ===================================================================== */
-function buildIntervalOptions() {
-  let html = '';
-  for (let m = 0; m < 1440; m += 30) {
-    const t = toHHMM(m);
-    html += `<option value="${t}">${fmtAMPM(t)}</option>`;
-  }
-  $('interval').innerHTML = html;
-  $('interval').value = '09:00';
-}
-
 window.addEventListener('load', async () => {
-  buildIntervalOptions();
   initMinTarget();
   initMenus();
   initTracker();
   initMetricMonth();
 
   const today = ymd(estNow());
-  ['selectedDate', 'ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate', 'forecastDate']
+  ['ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate', 'forecastDate']
     .forEach(id => $(id).value = today);
   $('trackerMonth').value = today.slice(0, 7);
+  showTab('scheduleTab');          // landing page now that the Dashboard is gone
 
   await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadMetric(), loadMcs()]);
   renderAll();
