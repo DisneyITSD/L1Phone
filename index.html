@@ -51,17 +51,9 @@ select:disabled,input:disabled{background:#f1f3f5;color:var(--gray);cursor:not-a
 .tab-btn{background:none;color:#fff;font-weight:500;padding:8px 12px;opacity:.85;transition:all .2s ease}
 a.tab-btn{display:inline-block;padding:8px 12px;border-radius:8px;text-decoration:none;cursor:pointer;font:inherit}
 .tab-btn:hover,.tab-btn.active{background:rgba(255,255,255,.14);transform:none;box-shadow:none;opacity:1}
-.dropdown{position:relative;display:inline-block}
-.dropdown-content{display:none;position:absolute;top:100%;left:0;min-width:220px;background:#fff;box-shadow:0 6px 15px rgba(0,0,0,.15);border-radius:10px;z-index:999;overflow:hidden}
-.dropdown.open .dropdown-content{display:block}
-.dropdown-content a{display:block;padding:12px 15px;text-decoration:none;color:var(--navy);font-weight:600}
-.dropdown-content a:hover{background:#eef6ff}
 .live{display:flex;align-items:center;gap:10px;font-size:12px}
 #liveClock{display:inline-block;background:none;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:500;line-height:1.35;white-space:nowrap;text-align:left;cursor:default;user-select:none}
 #lastUpdated{color:#b9c7da!important}
-#realtimeBtn{background:none;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:5px 12px;font-weight:500;white-space:nowrap;flex-shrink:0;margin-left:4px}
-#realtimeBtn:hover{background:rgba(255,255,255,.12)}
-#realtimeBtn.on{background:rgba(40,167,69,.35);border-color:#28a745}
 #statusBanner{margin:10px 16px 0}
 
 /* ---------- Hints and notes ---------- */
@@ -166,13 +158,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #rosterTable th.today-col::before{content:'\25CF '}
 #qaTable td.qa-score{font-weight:700;white-space:nowrap}
 #qaTable tr.qa-click{cursor:pointer}
-
-/* ---------- Missing Agent Checker ---------- */
-.missing-layout{align-items:flex-start;gap:20px}
-.missing-input{display:flex;flex-direction:column;width:500px}
-.missing-results{display:flex;gap:20px;flex:1}
-.missing-results .panel{flex:1}
-#agentPaste{width:100%;height:180px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:10px}
 
 /* ---------- Toast ---------- */
 .panels li small.ph-time,.shift-panel li small.ph-time{color:#14532d!important;font-weight:600;opacity:1}
@@ -299,22 +284,14 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <div><div class="title">DITSC L1 English – Phone</div><div class="subtitle">One Team. One Goal. Endless Magic.</div></div>
   </div>
 
-  <button id="realtimeBtn" onclick="toggleRealtime()">Live Mode</button>
   <span id="liveClock">--:--:--</span>
 
   <nav class="tabs">
-    <div class="dropdown"><button class="tab-btn">Schedule ▾</button>
-      <div class="dropdown-content">
-        <a href="#scheduleTab" data-tab="scheduleTab">Daily view</a>
-        <a href="#rosterTab" data-tab="rosterTab">Monthly view</a>
-        <a href="#teamTab" data-tab="teamTab">Team roster</a>
-      </div></div>
-    <div class="dropdown"><button class="tab-btn">Scorecard ▾</button>
-      <div class="dropdown-content">
-        <a href="#metricTab" data-tab="metricTab">Performance Stack Ranking</a>
-        <a href="#mcsTab" data-tab="mcsTab">Overall Metric Scorecard</a>
-      </div></div>
-    <div class="dropdown"><a class="tab-btn" href="#missingTab" data-tab="missingTab">Missing Agent Checker</a></div>
+    <a class="tab-btn" href="#scheduleTab" data-tab="scheduleTab">Daily Schedule</a>
+    <a class="tab-btn" href="#rosterTab" data-tab="rosterTab">Monthly View Schedule</a>
+    <a class="tab-btn" href="#teamTab" data-tab="teamTab">Team roster</a>
+    <a class="tab-btn" href="#metricTab" data-tab="metricTab">Performance Stack Ranking</a>
+    <a class="tab-btn" href="#mcsTab" data-tab="mcsTab">Overall Metric Scorecard</a>
   </nav>
 
   <div class="live">
@@ -598,35 +575,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   </div>
 </section>
 
-<!-- ============ MISSING AGENT CHECKER ============ -->
-<section class="tab-panel" id="missingTab" hidden>
-  <div class="view-hint">🔎 Compare CXone activity against your Dashboard Working list to identify missing or unexpected agents.</div>
-  <div class="note red">
-    ⚠️ <strong>Live Mode is required.</strong>
-    The Missing Agent Checker compares your pasted list against the current Dashboard Working list.
-    Enable Live Mode before running the check.
-  </div>
-
-  <div class="controls missing-layout">
-    <div class="missing-input">
-      <div class="note amber" style="font-size:13px">
-        📋 <strong>Instructions:</strong>
-        Copy the list of Agents in the <strong>Agent Name</strong> column from the
-        <a href="https://na1.nice-incontact.com/apps/#/dashboard/wrapper/dashboards" target="_blank" rel="noopener" style="color:#0b74de;font-weight:600">CXone Dashboard</a>
-        and paste it below.
-      </div>
-      <textarea id="agentPaste" placeholder="Paste agents here, one per line..."></textarea>
-      <button id="missingCheckBtn" onclick="checkMissingAgents()" style="margin-top:10px;width:220px" disabled>Check Missing Agents</button>
-    </div>
-
-    <div class="missing-results">
-      <div class="panel"><h2>✅ Found Working</h2><ul id="foundAgents"></ul></div>
-      <div class="panel"><h2>❌ Missing Agents</h2><ul id="missingAgents"></ul></div>
-      <div class="panel"><h2>⚠️ Unexpected Agents</h2><ul id="unexpectedAgents"></ul></div>
-    </div>
-  </div>
-</section>
-
 <script>
 /* =====================================================================
    CONFIG
@@ -680,8 +628,6 @@ const ATT_OTHER = { code: 'CO', icon: '🚫', color: '#dc3545', label: 'Called O
 let estData = [], phData = [];
 let ptoList = [], calledOffList = [], announcementList = [], attTimeList = [], qaList = [];
 let dailyMap = new Map();
-let currentWorkingAgents = [];
-let realtimeMode = false, realtimeTimer = null;
 let activeTab = 'scheduleTab';
 let metricHeads = [], metricWeights = [], metricRows = [];
 let metricIdx = { month: -1, agent: 0, sup: -1, total: -1 }, metricSortSet = false;
@@ -834,8 +780,7 @@ function showTab(id) {
   activeTab = id;
 
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  const trigger = document.querySelector(`.tabs [data-tab="${id}"]`);
-  trigger?.closest('.dropdown')?.querySelector('.tab-btn')?.classList.add('active');
+  document.querySelector(`.tabs [data-tab="${id}"]`)?.classList.add('active');
 
   TAB_RENDERERS[id]?.();
 }
@@ -1032,7 +977,6 @@ const TAB_RENDERERS = {
 function renderAll() {
   loadSup();
   renderHighAnnouncements();
-  runLookup();
   TAB_RENDERERS[activeTab]?.();
 }
 
@@ -1047,27 +991,8 @@ function loadSup() {
 }
 
 /* =====================================================================
-   LIVE MODE & CLOCK
+   CLOCK
    ===================================================================== */
-function toggleRealtime() {
-  realtimeMode = !realtimeMode;
-  $('realtimeBtn').innerHTML = realtimeMode ? '🔴 Stop Live Mode' : '🟢 Live Mode';
-  $('realtimeBtn').classList.toggle('on', realtimeMode);
-  $('missingCheckBtn').disabled = !realtimeMode;
-
-  clearInterval(realtimeTimer);
-  if (realtimeMode) {
-    updateRealtime();
-    realtimeTimer = setInterval(updateRealtime, REFRESH_MS);
-  }
-}
-
-function updateRealtime() {
-  const now = estNow(), today = ymd(now);
-  ['ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate'].forEach(id => $(id).value = today);
-  renderAll();
-}
-
 function updateClock() {
   const now = new Date();
   const part = (tz, opts) => new Intl.DateTimeFormat('en-US', { timeZone: tz, ...opts }).format(now);
@@ -1083,66 +1008,6 @@ function updateClock() {
 /* =====================================================================
    STATUS LOGIC
    ===================================================================== */
-function getStatus(r, date, time) {
-  const c = im(time);
-  let working = false;
-
-  const today = parseShift(shiftFor(r, date));
-  if (today) working = today[1] < today[0] ? c >= today[0] : (c >= today[0] && c < today[1]);
-
-  if (!working) {
-    const prev = parseShift(shiftFor(r, addDays(date, -1)));
-    if (prev && prev[1] < prev[0]) working = c < prev[1];
-  }
-  if (!working) return null;
-
-  const lunch = tm(r['Lunch']);
-  if (lunch != null && c >= lunch && c < lunch + 60) return 'Lunch';
-
-  for (const b of [r['Break 1'], r['Break 2'], r['Break 3']]) {
-    const bt = tm(b);
-    if (bt != null && c >= bt && c < bt + 15) return 'Break';
-  }
-  return 'Working';
-}
-
-/* The working list is always for the current EST date and time */
-function lookupMinutes() {
-  const n = estNow();
-  return n.getHours() * 60 + n.getMinutes();
-}
-
-function isWithinShift(record, roster) {
-  const date = normalizeDate(record['EST Date']);
-  if (!date) return false;
-  const shift = parseShift(shiftFor(roster, date));
-  if (!shift) return false;
-
-  const base = parseYMD(date).getTime();
-  const start = base + shift[0] * 60000;
-  let end = base + shift[1] * 60000;
-  if (end <= start) end += 86400000;
-
-  const now = estNow().getTime();
-
-  return now >= start && now < end;
-}
-
-/* A "Running Late" record stops showing once the agent's actual login has been entered (ATTENDANCE TIME tab)
-   and that login time has arrived: they are on the phones, so they count as Working again.
-   Before the login time (e.g. when looking at an earlier interval) they still show as late. */
-function hasLoggedIn(record, roster) {
-  if (matchType(ATT_TYPES, record.Reason, ATT_OTHER).code !== 'LATE') return false;
-  const date = normalizeDate(record['EST Date']);
-  const inT = parseClock(timeEntries().get(normName(record.Name) + '|' + date)?.login);
-  const shift = parseShift(shiftFor(roster, date));
-  if (inT == null || !shift) return false;
-
-  const loginAt = parseYMD(date).getTime() + (shift[0] + clockDiff(inT, shift[0])) * 60000;
-  const now = estNow().getTime();
-  return now >= loginAt;
-}
-
 function getAgentState(r, day, date) {
   const off = isOff(r[day]);
   let state = off
@@ -1186,37 +1051,6 @@ function groupedBlocks(items, types, fallback, useReasonAsHeader) {
       ${names.map(n => `<div>• ${esc(n)}</div>`).join('')}
     </div>`;
   }).join('');
-}
-
-/* Builds the list of agents working right now (used by the Missing Agent Checker) */
-function runLookup() {
-  const date = ymd(estNow());
-  const mins = lookupMinutes();
-  const time = toHHMM(mins);
-  const w = [];
-
-  estData.forEach(r0 => {
-    const r = rowFor(r0, date);
-
-    /* Leave: check the PTO record dated today AND (if yesterday's shift ran
-       overnight) the one dated yesterday, and use whichever is active right now. */
-    const prevShift = parseShift(shiftFor(r, addDays(date, -1)));
-    const overnight = prevShift && prevShift[1] < prevShift[0];
-    const p = [
-      recFor(ptoList, r.Name, date),
-      overnight ? recFor(ptoList, r.Name, addDays(date, -1)) : null
-    ].find(x => x && isWithinShift(x, r));
-    if (p) return;
-
-    const co = calledOffList.find(x => normName(x.Name) === normName(r.Name) && isWithinShift(x, r));
-    if (co && !hasLoggedIn(co, r)) return;
-
-    const st = getStatus(r, date, time);
-    if (st) w.push(r.Name);
-  });
-
-  w.sort((x, y) => x.localeCompare(y));
-  currentWorkingAgents = w.map(x => up(x));
 }
 
 /* =====================================================================
@@ -2221,29 +2055,6 @@ function buildMcs() {
 }
 
 /* =====================================================================
-   MISSING AGENT CHECKER
-   ===================================================================== */
-const toProperCase = name => name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-
-function checkMissingAgents() {
-  if (!realtimeMode) {
-    alert('⚠️ Live Mode must be enabled to ensure the Working list is current before checking for missing agents.');
-    return;
-  }
-  const pasted = $('agentPaste').value.split('\n').map(s => s.trim()).filter(Boolean);
-  const pastedKeys = new Set(pasted.map(normName));
-  const workingKeys = new Set(currentWorkingAgents.map(normName));
-  const found = currentWorkingAgents.filter(a => pastedKeys.has(normName(a)));
-  const missing = currentWorkingAgents.filter(a => !pastedKeys.has(normName(a)));
-  const unexpected = pasted.filter(a => !workingKeys.has(normName(a)));
-
-  const list = (arr, style = '') => arr.map(x => `<li ${style}>${esc(toProperCase(x))}</li>`).join('');
-  $('foundAgents').innerHTML = list(found, 'class="working"');
-  $('missingAgents').innerHTML = list(missing, 'style="color:red;font-weight:bold"');
-  $('unexpectedAgents').innerHTML = list(unexpected, 'style="color:#ff9800;font-weight:bold"');
-}
-
-/* =====================================================================
    STAFFING TARGETS + SHIFT CHANGES
    ===================================================================== */
 const getMinTarget = () => {
@@ -2261,7 +2072,6 @@ function initMinTarget() {
     i.addEventListener('input', () => {
       inputs.forEach(o => { if (o !== i) o.value = i.value; });
       try { localStorage.setItem(TARGET_KEY, i.value); } catch (e) {}
-      runLookup();
       refreshForecast();
     });
   });
@@ -2611,16 +2421,6 @@ function initTracker() {
 /* =====================================================================
    MENUS + TOAST
    ===================================================================== */
-function initMenus() {
-  document.querySelectorAll('.dropdown>.tab-btn:not([data-tab])').forEach(b => b.addEventListener('click', e => {
-    e.stopPropagation();
-    const d = b.parentElement, was = d.classList.contains('open');
-    document.querySelectorAll('.dropdown.open').forEach(x => x.classList.remove('open'));
-    if (!was) d.classList.add('open');
-  }));
-  document.addEventListener('click', () => document.querySelectorAll('.dropdown.open').forEach(x => x.classList.remove('open')));
-}
-
 function toast(t) {
   let e = $('toast');
   if (!e) { e = document.createElement('div'); e.id = 'toast'; document.body.appendChild(e); }
@@ -2633,7 +2433,6 @@ function toast(t) {
    ===================================================================== */
 window.addEventListener('load', async () => {
   initMinTarget();
-  initMenus();
   initTracker();
   initMetricMonth();
 
