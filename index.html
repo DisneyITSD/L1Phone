@@ -49,6 +49,7 @@ select:disabled,input:disabled{background:#f1f3f5;color:var(--gray);cursor:not-a
 .bar .subtitle{font-size:11px;color:#b9c7da}
 .bar .tabs{display:flex;flex-wrap:wrap;gap:2px;flex:1;margin:0}
 .tab-btn{background:none;color:#fff;font-weight:500;padding:8px 12px;opacity:.85;transition:all .2s ease}
+a.tab-btn{display:inline-block;padding:8px 12px;border-radius:8px;text-decoration:none;cursor:pointer;font:inherit}
 .tab-btn:hover,.tab-btn.active{background:rgba(255,255,255,.14);transform:none;box-shadow:none;opacity:1}
 .dropdown{position:relative;display:inline-block}
 .dropdown-content{display:none;position:absolute;top:100%;left:0;min-width:220px;background:#fff;box-shadow:0 6px 15px rgba(0,0,0,.15);border-radius:10px;z-index:999;overflow:hidden}
@@ -302,19 +303,19 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
   <span id="liveClock">--:--:--</span>
 
   <nav class="tabs">
-    <div class="dropdown"><button class="tab-btn active" data-tab="lookupTab">Dashboard</button></div>
+    <div class="dropdown"><a class="tab-btn active" href="#lookupTab" data-tab="lookupTab">Dashboard</a></div>
     <div class="dropdown"><button class="tab-btn">Schedule ▾</button>
       <div class="dropdown-content">
-        <a href="#" data-tab="scheduleTab">Daily view</a>
-        <a href="#" data-tab="rosterTab">Monthly view</a>
-        <a href="#" data-tab="teamTab">Team roster</a>
+        <a href="#scheduleTab" data-tab="scheduleTab">Daily view</a>
+        <a href="#rosterTab" data-tab="rosterTab">Monthly view</a>
+        <a href="#teamTab" data-tab="teamTab">Team roster</a>
       </div></div>
     <div class="dropdown"><button class="tab-btn">Scorecard ▾</button>
       <div class="dropdown-content">
-        <a href="#" data-tab="metricTab">Performance Stack Ranking</a>
-        <a href="#" data-tab="mcsTab">Overall Metric Scorecard</a>
+        <a href="#metricTab" data-tab="metricTab">Performance Stack Ranking</a>
+        <a href="#mcsTab" data-tab="mcsTab">Overall Metric Scorecard</a>
       </div></div>
-    <div class="dropdown"><button class="tab-btn" data-tab="missingTab">Missing Agent Checker</button></div>
+    <div class="dropdown"><a class="tab-btn" href="#missingTab" data-tab="missingTab">Missing Agent Checker</a></div>
   </nav>
 
   <div class="live">
@@ -538,7 +539,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
     <button onclick="buildLateTable()">Show</button>
     <button onclick="$('lateDate').value='';buildLateTable()">All Dates</button>
     <input type="text" id="lateSearch" placeholder="🔍 Search Agent..." onkeyup="buildLateTable()">
-    <button class="blue" data-tab="attendanceTimeFormTab">+ Submit Time</button>
   </div>
   <div class="daily-summary">
     <div class="summary-box">📋 Records: <span id="lateCount">0</span></div>
@@ -892,9 +892,24 @@ function showTab(id) {
   TAB_RENDERERS[id]?.();
 }
 
+/* Menu items are real links (href="#tabId"), so right-click > "Open link in new tab", Ctrl/Cmd/Shift-click
+   and middle-click open that page in a new tab. A plain click just switches the page. */
 document.querySelectorAll('[data-tab]').forEach(el =>
-  el.addEventListener('click', e => { e.preventDefault(); showTab(el.dataset.tab); })
+  el.addEventListener('click', e => {
+    if (el.tagName === 'A' && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) return;   // let the browser open the link
+    e.preventDefault();
+    showTab(el.dataset.tab);
+    if (el.tagName === 'A') history.replaceState(null, '', '#' + el.dataset.tab);
+  })
 );
+
+/* Open the page named in the URL (#qaTab, ...) on load and when the hash changes (back / forward) */
+function showTabFromHash() {
+  const id = location.hash.slice(1);
+  const p = id && document.getElementById(id);
+  if (p && p.classList.contains('tab-panel') && id !== activeTab) showTab(id);
+}
+window.addEventListener('hashchange', showTabFromHash);
 
 /* =====================================================================
    DATA LOADING
@@ -2789,6 +2804,7 @@ window.addEventListener('load', async () => {
 
   await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadMetric(), loadMcs()]);
   renderAll();
+  showTabFromHash();
 
   updateClock();
   setInterval(updateClock, 1000);
