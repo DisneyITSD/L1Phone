@@ -236,10 +236,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #mcsTable th:first-child,#mcsTable td:first-child{position:sticky;left:0;background:#fff;box-shadow:1px 0 0 var(--line)}
 #mcsTable th:first-child{z-index:12}
 #mcsTable td:first-child{z-index:5}
-#mcsTable tr.mcs-agent td{background:#eef6ff;color:var(--navy);font-weight:700;text-align:left}
-#mcsTable tr.mcs-agent td small{color:var(--muted);font-weight:600}
-#mcsTable tr.mcs-month td:first-child{padding-left:28px;font-weight:500}
-#mcsTable tr.mcs-ytd td{font-weight:700;background:#fafbfc;border-top:2px solid var(--line)}
 
 /* Performance Stack Ranking: colour coding, trends, podium */
 #metricTable td.sc-good{background:#e8f5e9;color:#2e7d32;font-weight:600}
@@ -561,17 +557,10 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 
 <!-- ============ SCORECARD: METRIC SCORECARD (actual scores) ============ -->
 <section class="tab-panel" id="mcsTab" hidden>
-  <div class="view-hint">📈 Actual scores per agent. Tick one or more months (or Year to date): counts are added up, rates and times are averaged. Pick "Each agent by month" to see every agent's scores month by month, with a Year to date row. Click a column title to sort.</div>
+  <div class="view-hint">📈 Actual scores per agent for the selected month. Click a column title to sort.</div>
   <div class="note red" id="mcsNote" hidden></div>
   <div class="controls">
-    <select id="mcsView" onchange="buildMcs()">
-      <option value="summary">Summary (month / Year to date)</option>
-      <option value="agent">Each agent by month</option>
-    </select>
-    <div class="msel" id="mcsMonthWrap">
-      <button type="button" id="mcsMonthBtn" class="msel-btn">Month ▾</button>
-      <div class="msel-panel" id="mcsMonthPanel" hidden></div>
-    </div>
+    <select id="mcsMonth" onchange="buildMcs()"></select>
     <select id="mcsSupervisor" onchange="buildMcs()"><option>All Supervisors</option></select>
     <input type="text" id="mcsSearch" placeholder="🔍 Search Agent..." onkeyup="buildMcs()">
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
@@ -1782,8 +1771,8 @@ let metricSel = new Set(), metricSelInit = false;
 const metricMonthList = () => metricIdx.month >= 0 ? [...new Set(metricRows.map(r => r[metricIdx.month]).filter(Boolean))] : [];
 
 /* Work out how to average / re-format each column */
-function metricColKind(i, rows = metricRows) {
-  const vals = rows.map(r => r[i]).filter(v => v && !/no data/i.test(v));
+function metricColKind(i) {
+  const vals = metricRows.map(r => r[i]).filter(v => v && !/no data/i.test(v));
   if (!vals.length) return { kind: 'text' };
   if (vals.every(v => /^\d+:\d{2}(:\d{2})?$/.test(v))) return { kind: 'time', colons: Math.max(...vals.map(v => v.split(':').length - 1)) };
   if (vals.every(v => /^-?\d+(\.\d+)?%$/.test(v))) return { kind: 'pct' };
@@ -1949,7 +1938,8 @@ function buildMetric() {
   }
 
   /* Month is shown in the picker, so it is not repeated as a column */
-  const cols = metricHeads.map((_, i) => i).filter(i => i !== I.month && !/^(remarks?|site)$/i.test(metricHeads[i]));
+  const METRIC_SHOW = ['agent name', 'attendance', 'call and ticket quality', 'fcr', 'misroute rate', 'work rate', 'total', 'supervisor'];
+  const cols = METRIC_SHOW.map(n => metricHeads.findIndex(h => String(h || '').toLowerCase().trim() === n)).filter(i => i >= 0 && i !== I.month);
   const isPct = v => /^\d+(\.\d+)?%$/.test(v || '');
   table.tHead.innerHTML = '<tr>' + cols.map(i =>
     `<th onclick="sortBy('metric',${i})">${esc(metricHeads[i])}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`
@@ -2015,75 +2005,6 @@ const loadMcs = () => guard('mcs', "Couldn't load the Overall Metric Scorecard t
   mcsRows = rows.slice(h + 1).filter(r => clean(r[mcsI.agent])).map(r => mcsHeads.map((_, i) => clean(r[i])));
 });
 
-let mcsSel = new Set(), mcsSelInit = false;
-
-function renderMcsMonthPicker(months) {
-  const allOn = months.length > 1 && months.every(m => mcsSel.has(m));
-  $('mcsMonthPanel').innerHTML =
-    `<label class="ytd"><input type="checkbox" data-ytd ${allOn ? 'checked' : ''}> 📅 Year to date</label>` +
-    months.map(m => `<label><input type="checkbox" data-m="${esc(m)}" ${mcsSel.has(m) ? 'checked' : ''}> ${esc(m)}</label>`).join('');
-  $('mcsMonthBtn').textContent = (allOn ? 'Year to date' : mcsSel.size === 1 ? [...mcsSel][0] : `${mcsSel.size} months`) + ' ▾';
-}
-
-function initMcsMonth() {
-  $('mcsMonthBtn').addEventListener('click', e => { e.stopPropagation(); $('mcsMonthPanel').hidden = !$('mcsMonthPanel').hidden; });
-  $('mcsMonthWrap').addEventListener('click', e => e.stopPropagation());
-  document.addEventListener('click', () => $('mcsMonthPanel').hidden = true);
-  $('mcsMonthPanel').addEventListener('change', e => {
-    const t = e.target;
-    const months = [...new Set(mcsRows.map(r => r[mcsI.month]).filter(Boolean))]
-      .sort((a, b) => Date.parse(a + ' 1, 2000') - Date.parse(b + ' 1, 2000'));
-    if (t.dataset.ytd !== undefined) {
-      mcsSel = t.checked ? new Set(months) : new Set([months[months.length - 1]]);
-    } else if (t.dataset.m) {
-      t.checked ? mcsSel.add(t.dataset.m) : mcsSel.delete(t.dataset.m);
-      if (!mcsSel.size) mcsSel.add(t.dataset.m);               // always keep at least one month
-    }
-    buildMcs();
-  });
-}
-
-/* Combine several months into one row per agent:
-   - the columns listed in MCS_SUM are ADDED UP
-   - every other column (percentages, times, rates, misroutes, FCR ...) is AVERAGED
-   "No Data" / blank months are ignored. */
-const MCS_SUM = ['Calls Handled', 'Tickets Opened', 'Wrap Up Time - Instances', 'Wrap Up Time - Total Time',
-  'Extended Wrap up Time - Instances', 'Extended Wrap up Time - Total Time', 'Activity Code - Restroom - Instances',
-  'Restroom Total Time', 'Refused Calls', 'PTO Used'].map(mcsKey);
-const mcsIsSum = h => { const k = mcsKey(h); return MCS_SUM.some(s => k === s || (s.length > 4 && k.startsWith(s))); };
-function mcsAggregate(rowsIn) {
-  const I = mcsI, rank = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? 0 : t; };
-  const kinds = mcsHeads.map((_, i) => metricColKind(i, mcsRows));
-  const by = new Map();
-  rowsIn.forEach(r => { const k = normName(r[I.agent]); if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
-
-  return [...by.values()].map(list => {
-    list.sort((a, b) => rank(a[I.month]) - rank(b[I.month]));      // oldest -> newest
-    const latest = i => [...list].reverse().map(r => r[i]).find(Boolean) || '';
-    const out = mcsHeads.map((h, i) => {
-      if (i === I.month) return '';
-      if (i === I.agent) return list[list.length - 1][i];
-      const k = kinds[i];
-      if (i === I.sup || k.kind === 'text') return latest(i);
-      const pairs = list.map(r => [metricVal(r[i]), r]).filter(p => typeof p[0] === 'number');
-      if (!pairs.length) return list.some(r => /no data/i.test(r[i])) ? 'No Data' : '';
-      let v;
-      if (mcsIsSum(h)) {
-        v = pairs.reduce((a, p) => a + p[0], 0);
-      } else {
-        v = pairs.reduce((a, p) => a + p[0], 0) / pairs.length;
-      }
-      if (k.kind === 'pct') return v.toFixed(2) + '%';
-      if (k.kind === 'num') return String(Number.isInteger(v) ? v : +v.toFixed(2));
-      const sec = Math.round(v);
-      return k.colons >= 2 ? `${Math.floor(sec / 3600)}:${pad(Math.floor(sec % 3600 / 60))}:${pad(sec % 60)}`
-                           : `${Math.floor(sec / 60)}:${pad(sec % 60)}`;
-    });
-    out._n = list.length;
-    return out;
-  });
-}
-
 function buildMcs() {
   const table = $('mcsTable'), I = mcsI;
   $('mcsNote').hidden = !mcsMissing.length;
@@ -2095,47 +2016,23 @@ function buildMcs() {
     return;
   }
 
-  /* Month picker: tick one or more months, or Year to date (defaults to the latest month in the sheet) */
+  /* Month picker (defaults to the latest month in the sheet) */
   let months = I.month >= 0 ? [...new Set(mcsRows.map(r => r[I.month]).filter(Boolean))] : [];
   if (months.every(m => !isNaN(Date.parse(m + ' 1, 2000')))) months.sort((a, b) => Date.parse(a + ' 1, 2000') - Date.parse(b + ' 1, 2000'));
-  if (!mcsSelInit && months.length) { mcsSel = new Set([months[months.length - 1]]); mcsSelInit = true; }
-  mcsSel = new Set([...mcsSel].filter(m => months.includes(m)));
-  if (!mcsSel.size && months.length) mcsSel.add(months[months.length - 1]);
-  const view = $('mcsView').value;
-  $('mcsMonthWrap').hidden = !months.length || view === 'agent';
-  renderMcsMonthPicker(months);
-  const picked = months.length ? mcsRows.filter(r => mcsSel.has(r[I.month])) : mcsRows;
-  const inMonth = mcsSel.size > 1 ? mcsAggregate(picked) : picked;
+  const mSel = $('mcsMonth'), prevMonth = mSel.value;
+  mSel.hidden = !months.length;
+  mSel.innerHTML = months.map(m => `<option>${esc(m)}</option>`).join('');
+  if (months.length) mSel.value = months.includes(prevMonth) ? prevMonth : months[months.length - 1];
+  const inMonth = months.length ? mcsRows.filter(r => r[I.month] === mSel.value) : mcsRows;
 
   const supOf = r => (I.sup >= 0 ? r[I.sup] : '') || findAgent(r[I.agent])?.Supervisor || '';
   const supSel = $('mcsSupervisor'), prevSup = supSel.value;
-  const sups = [...new Set((view === 'agent' ? mcsRows : inMonth).map(supOf).filter(Boolean))].sort();
+  const sups = [...new Set(inMonth.map(supOf).filter(Boolean))].sort();
   supSel.innerHTML = `<option>${ALL}</option>` + sups.map(s => `<option>${esc(s)}</option>`).join('');
   if (sups.includes(prevSup)) supSel.value = prevSup;
   const sup = supSel.value, q = up($('mcsSearch').value);
 
-  const rows = (view === 'agent' ? mcsRows : inMonth).filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
-
-  table.classList.toggle('nosort', view === 'agent');
-  if (view === 'agent') {
-    /* One block per agent: a heading, then one row per month, then a Year to date row (same sum / average rules) */
-    const by = new Map();
-    rows.forEach(r => { const k = normName(r[I.agent]); if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
-    const rank = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? months.indexOf(m) : t; };
-    const groups = [...by.values()].sort((a, b) => a[0][I.agent].localeCompare(b[0][I.agent]));
-    table.tHead.innerHTML = '<tr>' + mcsCols.map(i => `<th>${esc(i === I.agent ? mcsHeads[i] + ' / Month' : mcsHeads[i])}</th>`).join('') + '</tr>';
-    table.tBodies[0].innerHTML = groups.length ? groups.map(list => {
-      list.sort((a, b) => rank(a[I.month]) - rank(b[I.month]));
-      const sc = supOf(list[list.length - 1]);
-      const row = (r, label, cls) => `<tr class="${cls}" style="${supStyle(sc)}">` +
-        mcsCols.map(i => `<td>${esc(i === I.agent ? label : i === I.sup ? sc : r[i]) || '—'}</td>`).join('') + '</tr>';
-      return `<tr class="mcs-agent sup-row" style="${supStyle(sc)}"><td colspan="${mcsCols.length}">${esc(list[0][I.agent])} <small>· ${esc(sc || 'Unassigned')}</small></td></tr>` +
-        list.map(r => row(r, r[I.month] || '—', 'mcs-month')).join('') +
-        (list.length > 1 ? row(mcsAggregate(list)[0], 'Year to date', 'mcs-ytd') : '');
-    }).join('') : `<tr><td colspan="${mcsCols.length || 1}">No agents found</td></tr>`;
-    $('mcsCount').textContent = groups.length;
-    return;
-  }
+  const rows = inMonth.filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
 
   const { col, asc } = sortState.mcs;
   if (col >= 0) {
@@ -2153,10 +2050,7 @@ function buildMcs() {
   table.tBodies[0].innerHTML = rows.length ? rows.map(r => {
     const sc = supOf(r);
     return `<tr class="${supClass(sc)}" style="${supStyle(sc)}">` +
-      mcsCols.map(i => {
-        if (i === I.agent && r._n && r._n < mcsSel.size) return `<td>${esc(r[i])} <small class="mo" title="Totals / averages cover only the months this agent has data">(${r._n}/${mcsSel.size} mo)</small></td>`;
-        return `<td>${esc(i === I.sup ? sc : r[i]) || '—'}</td>`;
-      }).join('') + '</tr>';
+      mcsCols.map(i => `<td>${esc(i === I.sup ? sc : r[i]) || '—'}</td>`).join('') + '</tr>';
   }).join('') : `<tr><td colspan="${mcsCols.length || 1}">No agents found</td></tr>`;
   $('mcsCount').textContent = rows.length;
 }
@@ -2542,7 +2436,6 @@ window.addEventListener('load', async () => {
   initMinTarget();
   initTracker();
   initMetricMonth();
-  initMcsMonth();
 
   const today = ymd(estNow());
   ['ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate', 'forecastDate']
