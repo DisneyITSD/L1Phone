@@ -211,10 +211,6 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #metricTable td:first-child{text-align:left;font-weight:600}
 #metricTable td.nodata{background:#4a4a4a;color:#fff;font-weight:600}
 #metricTable td.overall{font-weight:700}
-#metricTable tr.mt-agent td{background:#eef6ff;color:var(--navy);font-weight:700;text-align:left}
-#metricTable tr.mt-agent td small{color:var(--muted);font-weight:600}
-#metricTable tr.mt-month td:first-child{padding-left:28px;font-weight:500}
-#metricTable tr.mt-total td{font-weight:700;border-top:2px solid var(--line)}
 #metricTable td .rank{display:inline-block;min-width:28px;color:#64748b;font-weight:600}
 .msel{position:relative}
 .controls .msel-btn{background:#fff;color:#111;font-weight:400;border:1px solid #d0d7de;min-width:170px;text-align:left}
@@ -240,10 +236,13 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #mcsTable th:first-child,#mcsTable td:first-child{position:sticky;left:0;background:#fff;box-shadow:1px 0 0 var(--line)}
 #mcsTable th:first-child{z-index:12}
 #mcsTable td:first-child{z-index:5}
-#mcsTable tr.mcs-agent td{background:#eef6ff;color:var(--navy);font-weight:700;text-align:left}
-#mcsTable tr.mcs-agent td small{color:var(--muted);font-weight:600}
 #mcsTable tr.mcs-month td:first-child{padding-left:28px;font-weight:500}
-#mcsTable tr.mcs-ytd td{font-weight:700;background:#fafbfc;border-top:2px solid var(--line)}
+.caret::before{content:'\25B8';display:inline-block;width:16px;color:var(--navy)}
+tr.open .caret::before{content:'\25BE'}
+tr.grp-head{cursor:pointer}
+tr.grp-head:hover{filter:brightness(.97)}
+#metricTable tr.grp-head td:first-child,#mcsTable tr.grp-head td:first-child{background:#eef6ff;color:var(--navy);font-weight:700;text-align:left}
+#metricTable tr.mt-month td:first-child{padding-left:32px;font-weight:500}
 
 /* Performance Stack Ranking: colour coding, trends, podium */
 #metricTable td.sc-good{background:#e8f5e9;color:#2e7d32;font-weight:600}
@@ -540,7 +539,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 
 <!-- ============ SCORECARD: OVERALL METRIC ============ -->
 <section class="tab-panel" id="metricTab" hidden>
-  <div class="view-hint">📊 Performance stack ranking per agent. Tick one or more months (or Year to date): each agent then shows their monthly scores plus an Average row, ranked by that average. Click a column title to sort.</div>
+  <div class="view-hint">📊 Performance stack ranking per agent. Tick one or more months (or Year to date): each agent then shows one row with their average, ranked by it. Click an agent (▸) to open their monthly scores. Click a column title to sort.</div>
   <div class="controls">
     <div class="msel" id="metricMonthWrap">
       <button type="button" id="metricMonthBtn" class="msel-btn">Month ▾</button>
@@ -565,7 +564,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 
 <!-- ============ SCORECARD: METRIC SCORECARD (actual scores) ============ -->
 <section class="tab-panel" id="mcsTab" hidden>
-  <div class="view-hint">📈 Actual scores per agent. Tick one or more months (or Year to date); in the Total row, counts are added up and rates and times are averaged. With several months ticked, each agent shows their monthly scores plus a Total row. With one month ticked, click a column title to sort.</div>
+  <div class="view-hint">📈 Actual scores per agent. Tick one or more months (or Year to date); in the Total row, counts are added up and rates and times are averaged. With several months ticked, each agent shows one row with the Total; click an agent (▸) to open their monthly scores. With one month ticked, click a column title to sort.</div>
   <div class="note red" id="mcsNote" hidden></div>
   <div class="controls">
     <div class="msel" id="mcsMonthWrap">
@@ -1238,11 +1237,35 @@ function refreshForecast() {
   buildCoverageTimeline();
 }
 
+/* Coverage for one shift: leave and Called Off / NCNS take the agent out for the whole shift.
+   Running Late / Left Early only take them out for the minutes they missed (actual login / logout from the
+   ATTENDANCE TIME tab). If no time has been submitted yet, half the shift is assumed missed (same as the Attendance page). */
+function coverageGaps(r, s) {
+  const none = { out: false, gaps: [] };
+  if (recFor(ptoList, r.Name, s.date)) return { out: true, gaps: [] };
+  const co = recFor(calledOffList, r.Name, s.date);
+  const ent = timeEntries().get(normName(r.Name) + '|' + s.date);
+  if (co && !matchType(ATT_TYPES, co.Reason, ATT_OTHER).partial) return { out: true, gaps: [] };   // NCNS / called off
+  if (!co && !ent) return none;
+
+  const p = parseShift(shiftFor(r, s.date));
+  if (!p) return { out: !!co, gaps: [] };
+  const len = s.end - s.start, rc = up(co?.Reason);
+  const inT = parseClock(ent?.login), outT = parseClock(ent?.logout);
+  const wantLate = rc.includes('LATE') || inT != null, wantEarly = rc.includes('LEFT') || outT != null;
+  const unknown = (wantLate && inT == null) + (wantEarly && outT == null);
+  const guess = unknown ? Math.round(len / 2 / unknown) : 0;
+  let late = !wantLate ? 0 : inT != null ? Math.max(0, clockDiff(inT, p[0])) : guess;
+  let early = !wantEarly ? 0 : outT != null ? Math.max(0, clockDiff(p[1], outT)) : guess;
+  late = Math.min(late, len); early = Math.min(early, len - late);
+  return { out: false, gaps: [[s.start, s.start + late], [s.end - early, s.end]] };
+}
+
 function coverageSlots(date) {
   const people = estData.map(r => ({
     shifts: shiftsAround(r, date).map(s => ({
       ...s,
-      out: !!(recFor(ptoList, r.Name, s.date) || recFor(calledOffList, r.Name, s.date))
+      ...coverageGaps(r, s)
     }))
   }));
   const slots = [];
@@ -1252,7 +1275,7 @@ function coverageSlots(date) {
       const s = p.shifts.find(x => x.start <= m && m < x.end);
       if (!s) return;
       expected++;
-      if (!s.out) available++;
+      if (!s.out && !s.gaps.some(([a, b]) => m >= a && m < b)) available++;
     });
     slots.push({ time: toHHMM(m), expected, available });
   }
@@ -1830,6 +1853,19 @@ function renderMetricMonthPicker(months) {
   $('metricMonthBtn').textContent = (allOn ? 'Year to date' : metricSel.size === 1 ? [...metricSel][0] : `${metricSel.size} months`) + ' ▾';
 }
 
+/* Collapsible agent rows (several months ticked): remember which agents are open across refreshes */
+const metricOpen = new Set(), mcsOpen = new Set();
+function initGroupToggle() {
+  [['metricTable', metricOpen], ['mcsTable', mcsOpen]].forEach(([id, set]) => $(id).addEventListener('click', e => {
+    const h = e.target.closest('tr.grp-head');
+    if (!h) return;
+    const k = h.dataset.g, open = !set.has(k);
+    open ? set.add(k) : set.delete(k);
+    h.classList.toggle('open', open);
+    $(id).querySelectorAll('tr[data-g]:not(.grp-head)').forEach(tr => { if (tr.dataset.g === k) tr.hidden = !open; });
+  }));
+}
+
 function initMetricMonth() {
   $('metricMonthBtn').addEventListener('click', e => { e.stopPropagation(); $('metricMonthPanel').hidden = !$('metricMonthPanel').hidden; });
   $('metricMonthWrap').addEventListener('click', e => e.stopPropagation());
@@ -1984,16 +2020,16 @@ function buildMetric() {
   if (!rows.length) {
     table.tBodies[0].innerHTML = `<tr><td colspan="${cols.length}">No agents found</td></tr>`;
   } else if (metricSel.size > 1) {
-    /* Several months ticked: per agent a heading, one row per ticked month, then an Average row (agents stay in ranking order) */
+    /* Several months ticked: each agent is one collapsible row showing the Average; click it to show / hide the monthly rows */
     const byAgent = new Map();
     inMonth.forEach(r => { const k = normName(r[I.agent]); if (!byAgent.has(k)) byAgent.set(k, []); byAgent.get(k).push(r); });
     const rankM = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? months.indexOf(m) : t; };
     table.tBodies[0].innerHTML = rows.map((r, n) => {
-      const sc = supOf(r), st = supStyle(sc);
-      const list = (byAgent.get(normName(r[I.agent])) || []).slice().sort((a, b) => rankM(a[I.month]) - rankM(b[I.month]));
-      return `<tr class="mt-agent sup-row" style="${st}"><td colspan="${cols.length}"><span class="rank">${n + 1}.</span> ${esc(r[I.agent])} <small>· ${esc(sc || 'Unassigned')}</small>${tagOf(r)}</td></tr>` +
-        list.map(m => `<tr class="mt-month" style="${st}">` + cols.map(i => cell(m, i, esc(m[I.month] || '—'))).join('') + '</tr>').join('') +
-        (list.length > 1 ? `<tr class="mt-total" style="${st}">` + cols.map(i => cell(r, i, 'Average')).join('') + '</tr>' : '');
+      const sc = supOf(r), st = supStyle(sc), g = normName(r[I.agent]), open = metricOpen.has(g);
+      const list = (byAgent.get(g) || []).slice().sort((a, b) => rankM(a[I.month]) - rankM(b[I.month]));
+      return `<tr class="grp-head mt-agent sup-row${open ? ' open' : ''}" data-g="${esc(g)}" style="${st}" title="Click to show / hide the monthly scores">` +
+          cols.map(i => cell(r, i, `<span class="caret"></span><span class="rank">${n + 1}.</span> ${esc(r[I.agent])}${tagOf(r)}`)).join('') + '</tr>' +
+        list.map(m => `<tr class="mt-month" data-g="${esc(g)}" style="${st}"${open ? '' : ' hidden'}>` + cols.map(i => cell(m, i, esc(m[I.month] || '—'))).join('') + '</tr>').join('');
     }).join('');
   } else {
     table.tBodies[0].innerHTML = rows.map((r, n) => {
@@ -2148,12 +2184,13 @@ function buildMcs() {
     table.tHead.innerHTML = '<tr>' + mcsCols.map(i => `<th>${esc(i === I.agent ? mcsHeads[i] + ' / Month' : mcsHeads[i])}</th>`).join('') + '</tr>';
     table.tBodies[0].innerHTML = groups.length ? groups.map(list => {
       list.sort((a, b) => rank(a[I.month]) - rank(b[I.month]));
-      const sc = supOf(list[list.length - 1]);
-      const row = (r, label, cls) => `<tr class="${cls}" style="${supStyle(sc)}">` +
-        mcsCols.map(i => `<td>${esc(i === I.agent ? label : i === I.sup ? sc : r[i]) || '—'}</td>`).join('') + '</tr>';
-      return `<tr class="mcs-agent sup-row" style="${supStyle(sc)}"><td colspan="${mcsCols.length}">${esc(list[0][I.agent])} <small>· ${esc(sc || 'Unassigned')}</small></td></tr>` +
-        list.map(r => row(r, r[I.month] || '—', 'mcs-month')).join('') +
-        (list.length > 1 ? row(mcsAggregate(list)[0], 'Total', 'mcs-ytd') : '');
+      const sc = supOf(list[list.length - 1]), g = normName(list[0][I.agent]), open = mcsOpen.has(g);
+      const row = (r, label, cls, hid) => `<tr class="${cls}" data-g="${esc(g)}" style="${supStyle(sc)}"${hid ? ' hidden' : ''}>` +
+        mcsCols.map(i => `<td>${i === I.agent ? label : esc(i === I.sup ? sc : r[i]) || '—'}</td>`).join('') + '</tr>';
+      if (list.length < 2) return row(list[0], `${esc(list[0][I.agent])} <small>· ${esc(list[0][I.month] || '')}</small>`, 'mcs-single sup-row', false);
+      /* collapsible agent row = Total for the ticked months; click it to show / hide the monthly rows */
+      return row(mcsAggregate(list)[0], `<span class="caret"></span>${esc(list[0][I.agent])}`, `grp-head mcs-agent sup-row${open ? ' open' : ''}`, false) +
+        list.map(r => row(r, esc(r[I.month] || '—'), 'mcs-month', !open)).join('');
     }).join('') : `<tr><td colspan="${mcsCols.length || 1}">No agents found</td></tr>`;
     $('mcsCount').textContent = groups.length;
     return;
@@ -2564,6 +2601,7 @@ window.addEventListener('load', async () => {
   initMinTarget();
   initTracker();
   initMetricMonth();
+  initGroupToggle();
   initMcsMonth();
 
   const today = ymd(estNow());
