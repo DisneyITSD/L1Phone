@@ -211,6 +211,10 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #metricTable td:first-child{text-align:left;font-weight:600}
 #metricTable td.nodata{background:#4a4a4a;color:#fff;font-weight:600}
 #metricTable td.overall{font-weight:700}
+#metricTable tr.mt-agent td{background:#eef6ff;color:var(--navy);font-weight:700;text-align:left}
+#metricTable tr.mt-agent td small{color:var(--muted);font-weight:600}
+#metricTable tr.mt-month td:first-child{padding-left:28px;font-weight:500}
+#metricTable tr.mt-total td{font-weight:700;border-top:2px solid var(--line)}
 #metricTable td .rank{display:inline-block;min-width:28px;color:#64748b;font-weight:600}
 .msel{position:relative}
 .controls .msel-btn{background:#fff;color:#111;font-weight:400;border:1px solid #d0d7de;min-width:170px;text-align:left}
@@ -536,7 +540,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 
 <!-- ============ SCORECARD: OVERALL METRIC ============ -->
 <section class="tab-panel" id="metricTab" hidden>
-  <div class="view-hint">📊 Performance stack ranking per agent. Tick one or more months (or Year to date) and the scores are averaged automatically. Click a column title to sort.</div>
+  <div class="view-hint">📊 Performance stack ranking per agent. Tick one or more months (or Year to date): each agent then shows their monthly scores plus an Average row, ranked by that average. Click a column title to sort.</div>
   <div class="controls">
     <div class="msel" id="metricMonthWrap">
       <button type="button" id="metricMonthBtn" class="msel-btn">Month ▾</button>
@@ -561,13 +565,9 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 
 <!-- ============ SCORECARD: METRIC SCORECARD (actual scores) ============ -->
 <section class="tab-panel" id="mcsTab" hidden>
-  <div class="view-hint">📈 Actual scores per agent. Tick one or more months (or Year to date): counts are added up, rates and times are averaged. Pick "Each agent by month" to see every agent's scores month by month, with a Year to date row. Click a column title to sort.</div>
+  <div class="view-hint">📈 Actual scores per agent. Tick one or more months (or Year to date); in the Total row, counts are added up and rates and times are averaged. With several months ticked, each agent shows their monthly scores plus a Total row. With one month ticked, click a column title to sort.</div>
   <div class="note red" id="mcsNote" hidden></div>
   <div class="controls">
-    <select id="mcsView" onchange="buildMcs()">
-      <option value="summary">Summary (month / Year to date)</option>
-      <option value="agent">Each agent by month</option>
-    </select>
     <div class="msel" id="mcsMonthWrap">
       <button type="button" id="mcsMonthBtn" class="msel-btn">Month ▾</button>
       <div class="msel-panel" id="mcsMonthPanel" hidden></div>
@@ -1783,7 +1783,7 @@ const metricMonthList = () => metricIdx.month >= 0 ? [...new Set(metricRows.map(
 
 /* Work out how to average / re-format each column */
 function metricColKind(i, rows = metricRows) {
-  const vals = rows.map(r => r[i]).filter(v => v && !/no data/i.test(v));
+  const vals = rows.map(r => r[i]).filter(v => v && !/no data/i.test(v) && !/^(#|n\/?a$|-+$|—$)/i.test(v.trim()));   // ignore blanks, No Data, #REF!, N/A
   if (!vals.length) return { kind: 'text' };
   if (vals.every(v => /^\d+:\d{2}(:\d{2})?$/.test(v))) return { kind: 'time', colons: Math.max(...vals.map(v => v.split(':').length - 1)) };
   if (vals.every(v => /^-?\d+(\.\d+)?%$/.test(v))) return { kind: 'pct' };
@@ -1958,32 +1958,50 @@ function buildMetric() {
     `<th onclick="sortBy('metric',${i})">${esc(metricHeads[i])}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`
   ).join('') + '</tr>';
 
-  table.tBodies[0].innerHTML = rows.length ? rows.map((r, n) => {
-    const sc = supOf(r);
-    return `<tr class="${supClass(sc)}" style="${supStyle(sc)}">` + cols.map(i => {
-      const v = r[i];
-      if (i === I.agent) {
-        const tag = r._n && r._n < metricSel.size ? ` <small class="mo" title="Averaged over the months this agent has data">(${r._n}/${metricSel.size} mo)</small>` : '';
-        return `<td><span class="rank">${n + 1}.</span> ${esc(v)}${tag}</td>`;
+  /* One table cell. agentHtml replaces the agent cell's content (rank + name, or a month label). */
+  const cell = (r, i, agentHtml) => {
+    const v = r[i];
+    if (i === I.agent) return `<td>${agentHtml}</td>`;
+    if (/no data/i.test(v)) return `<td class="nodata">No Data</td>`;
+    const num = metricVal(v), mx = maxOf[i];
+    const bd = metricBand(i);
+    const sc = (typeof num === 'number')
+      ? (bd ? (num >= bd.good ? ' sc-good' : num >= bd.mid ? ' sc-mid' : ' sc-low')
+            : mx ? (num / mx >= 0.9 ? ' sc-good' : num / mx >= 0.75 ? ' sc-mid' : ' sc-low') : '')
+      : '';
+    let trend = '';
+    if (i === I.total && prevTotals) {
+      const pv = prevTotals.get(normName(r[I.agent]));
+      if (typeof pv === 'number' && typeof num === 'number' && Math.abs(num - pv) >= 0.005) {
+        const d = num - pv;
+        trend = `<span class="trend ${d > 0 ? 'up' : 'down'}" title="vs ${esc(prevName)}">${d > 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(2)}</span>`;
       }
-      if (/no data/i.test(v)) return `<td class="nodata">No Data</td>`;
-      const num = metricVal(v), mx = maxOf[i];
-      const bd = metricBand(i);
-      const sc = (typeof num === 'number')
-        ? (bd ? (num >= bd.good ? ' sc-good' : num >= bd.mid ? ' sc-mid' : ' sc-low')
-              : mx ? (num / mx >= 0.9 ? ' sc-good' : num / mx >= 0.75 ? ' sc-mid' : ' sc-low') : '')
-        : '';
-      let trend = '';
-      if (i === I.total && prevTotals) {
-        const pv = prevTotals.get(normName(r[I.agent]));
-        if (typeof pv === 'number' && typeof num === 'number' && Math.abs(num - pv) >= 0.005) {
-          const d = num - pv;
-          trend = `<span class="trend ${d > 0 ? 'up' : 'down'}" title="vs ${esc(prevName)}">${d > 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(2)}</span>`;
-        }
-      }
-      return `<td class="${i === I.total ? 'overall' : ''}${sc}"${bd ? ` title="${esc(bd.tip)}"` : ''}>${esc(v) || '—'}${trend}</td>`;
-    }).join('') + '</tr>';
-  }).join('') : `<tr><td colspan="${cols.length}">No agents found</td></tr>`;
+    }
+    return `<td class="${i === I.total ? 'overall' : ''}${sc}"${bd ? ` title="${esc(bd.tip)}"` : ''}>${esc(v) || '—'}${trend}</td>`;
+  };
+  const tagOf = r => r._n && r._n < metricSel.size ? ` <small class="mo" title="Averaged over the months this agent has data">(${r._n}/${metricSel.size} mo)</small>` : '';
+
+  if (!rows.length) {
+    table.tBodies[0].innerHTML = `<tr><td colspan="${cols.length}">No agents found</td></tr>`;
+  } else if (metricSel.size > 1) {
+    /* Several months ticked: per agent a heading, one row per ticked month, then an Average row (agents stay in ranking order) */
+    const byAgent = new Map();
+    inMonth.forEach(r => { const k = normName(r[I.agent]); if (!byAgent.has(k)) byAgent.set(k, []); byAgent.get(k).push(r); });
+    const rankM = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? months.indexOf(m) : t; };
+    table.tBodies[0].innerHTML = rows.map((r, n) => {
+      const sc = supOf(r), st = supStyle(sc);
+      const list = (byAgent.get(normName(r[I.agent])) || []).slice().sort((a, b) => rankM(a[I.month]) - rankM(b[I.month]));
+      return `<tr class="mt-agent sup-row" style="${st}"><td colspan="${cols.length}"><span class="rank">${n + 1}.</span> ${esc(r[I.agent])} <small>· ${esc(sc || 'Unassigned')}</small>${tagOf(r)}</td></tr>` +
+        list.map(m => `<tr class="mt-month" style="${st}">` + cols.map(i => cell(m, i, esc(m[I.month] || '—'))).join('') + '</tr>').join('') +
+        (list.length > 1 ? `<tr class="mt-total" style="${st}">` + cols.map(i => cell(r, i, 'Average')).join('') + '</tr>' : '');
+    }).join('');
+  } else {
+    table.tBodies[0].innerHTML = rows.map((r, n) => {
+      const sc = supOf(r);
+      return `<tr class="${supClass(sc)}" style="${supStyle(sc)}">` +
+        cols.map(i => cell(r, i, `<span class="rank">${n + 1}.</span> ${esc(r[I.agent])}${tagOf(r)}`)).join('') + '</tr>';
+    }).join('');
+  }
 
   const totals = I.total >= 0 ? rows.map(r => metricVal(r[I.total])).filter(v => typeof v === 'number') : [];
   $('metricCount').textContent = rows.length;
@@ -2066,7 +2084,8 @@ function mcsAggregate(rowsIn) {
     const out = mcsHeads.map((h, i) => {
       if (i === I.month) return '';
       if (i === I.agent) return list[list.length - 1][i];
-      const k = kinds[i];
+      let k = kinds[i];
+      if (k.kind === 'text' && mcsIsSum(h) && i !== I.sup && i !== I.agent) k = { kind: 'num' };   // a summed column is never treated as text
       if (i === I.sup || k.kind === 'text') return latest(i);
       const pairs = list.map(r => [metricVal(r[i]), r]).filter(p => typeof p[0] === 'number');
       if (!pairs.length) return list.some(r => /no data/i.test(r[i])) ? 'No Data' : '';
@@ -2104,24 +2123,24 @@ function buildMcs() {
   if (!mcsSelInit && months.length) { mcsSel = new Set([months[months.length - 1]]); mcsSelInit = true; }
   mcsSel = new Set([...mcsSel].filter(m => months.includes(m)));
   if (!mcsSel.size && months.length) mcsSel.add(months[months.length - 1]);
-  const view = $('mcsView').value;
-  $('mcsMonthWrap').hidden = !months.length || view === 'agent';
+  const view = mcsSel.size > 1 ? 'agent' : 'summary';      // several months: monthly rows + Total row per agent
+  $('mcsMonthWrap').hidden = !months.length;
   renderMcsMonthPicker(months);
   const picked = months.length ? mcsRows.filter(r => mcsSel.has(r[I.month])) : mcsRows;
   const inMonth = mcsSel.size > 1 ? mcsAggregate(picked) : picked;
 
   const supOf = r => (I.sup >= 0 ? r[I.sup] : '') || findAgent(r[I.agent])?.Supervisor || '';
   const supSel = $('mcsSupervisor'), prevSup = supSel.value;
-  const sups = [...new Set((view === 'agent' ? mcsRows : inMonth).map(supOf).filter(Boolean))].sort();
+  const sups = [...new Set((view === 'agent' ? picked : inMonth).map(supOf).filter(Boolean))].sort();
   supSel.innerHTML = `<option>${ALL}</option>` + sups.map(s => `<option>${esc(s)}</option>`).join('');
   if (sups.includes(prevSup)) supSel.value = prevSup;
   const sup = supSel.value, q = up($('mcsSearch').value);
 
-  const rows = (view === 'agent' ? mcsRows : inMonth).filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
+  const rows = (view === 'agent' ? picked : inMonth).filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
 
   table.classList.toggle('nosort', view === 'agent');
   if (view === 'agent') {
-    /* One block per agent: a heading, then one row per month, then a Year to date row (same sum / average rules) */
+    /* One block per agent: a heading, one row per ticked month, then a Total row (sum / average rules above) */
     const by = new Map();
     rows.forEach(r => { const k = normName(r[I.agent]); if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
     const rank = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? months.indexOf(m) : t; };
@@ -2134,7 +2153,7 @@ function buildMcs() {
         mcsCols.map(i => `<td>${esc(i === I.agent ? label : i === I.sup ? sc : r[i]) || '—'}</td>`).join('') + '</tr>';
       return `<tr class="mcs-agent sup-row" style="${supStyle(sc)}"><td colspan="${mcsCols.length}">${esc(list[0][I.agent])} <small>· ${esc(sc || 'Unassigned')}</small></td></tr>` +
         list.map(r => row(r, r[I.month] || '—', 'mcs-month')).join('') +
-        (list.length > 1 ? row(mcsAggregate(list)[0], 'Year to date', 'mcs-ytd') : '');
+        (list.length > 1 ? row(mcsAggregate(list)[0], 'Total', 'mcs-ytd') : '');
     }).join('') : `<tr><td colspan="${mcsCols.length || 1}">No agents found</td></tr>`;
     $('mcsCount').textContent = groups.length;
     return;
