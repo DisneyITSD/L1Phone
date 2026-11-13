@@ -553,6 +553,9 @@ tr.mo-10{--mc:#14b8a6}
 tr.mo-11{--mc:#64748b}
 #mcsTable tr[class*="mo-"] td:first-child,#metricTable tr[class*="mo-"] td:first-child,#qaTable tr[class*="mo-"] td:first-child{background:color-mix(in srgb,var(--mc) 14%,#fff);box-shadow:inset 5px 0 0 var(--mc),1px 0 0 var(--line);color:inherit}
 html[data-theme=dark] #mcsTable tr[class*="mo-"] td:first-child,html[data-theme=dark] #metricTable tr[class*="mo-"] td:first-child,html[data-theme=dark] #qaTable tr[class*="mo-"] td:first-child{background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
+/* Month colour coding: tint the whole row (score-band cells keep their own colour) */
+#mcsTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),#metricTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),#qaTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata){background:color-mix(in srgb,var(--mc) 14%,#fff)}
+html[data-theme=dark] #mcsTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),html[data-theme=dark] #metricTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),html[data-theme=dark] #qaTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata){background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
 </style>
 </head>
 
