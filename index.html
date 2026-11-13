@@ -557,11 +557,11 @@ html[data-theme=dark] #mcsTable tr[class*="mo-"] td:first-child,html[data-theme=
 #mcsTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),#metricTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),#qaTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata){background:color-mix(in srgb,var(--mc) 14%,#fff)}
 html[data-theme=dark] #mcsTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),html[data-theme=dark] #metricTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata),html[data-theme=dark] #qaTable tr[class*="mo-"] td:not(.sc-good):not(.sc-mid):not(.sc-low):not(.nodata){background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
 /* QA table: also tint the Avg Score cell (its band shows in the text colour and dot) */
-#qaTable tr[class*="mo-"] td.qa-score{background:color-mix(in srgb,var(--mc) 14%,#fff)}
-html[data-theme=dark] #qaTable tr[class*="mo-"] td.qa-score{background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
+#qaTable tr[class*="mo-"] td.qa-score{background:color-mix(in srgb,var(--mc) 14%,#fff)!important}
+html[data-theme=dark] #qaTable tr[class*="mo-"] td.qa-score{background:color-mix(in srgb,var(--mc) 22%,var(--surface))!important}
 /* Performance Stack Ranking: also tint the score cells (band shows in text colour and dot); No Data cells keep their dark style */
-#metricTable tr[class*="mo-"] td:not(.nodata){background:color-mix(in srgb,var(--mc) 14%,#fff)}
-html[data-theme=dark] #metricTable tr[class*="mo-"] td:not(.nodata){background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
+#metricTable tr[class*="mo-"] td:not(.nodata){background:color-mix(in srgb,var(--mc) 14%,#fff)!important}
+html[data-theme=dark] #metricTable tr[class*="mo-"] td:not(.nodata){background:color-mix(in srgb,var(--mc) 22%,var(--surface))!important}
 </style>
 </head>
 
