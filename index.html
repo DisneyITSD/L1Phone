@@ -443,6 +443,23 @@ td.sc-good::before,td.sc-mid::before,td.sc-low::before{content:"";display:inline
   .schedule-container{height:calc(100vh - 250px)}
 }
 @media(max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.panels{grid-template-columns:1fr}}
+
+/* Working list: collapsible */
+#workingList{border-left:0}
+.panels .panel:first-child h3{cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none}
+.panels .panel:first-child h3::after{content:"";margin-left:auto;width:7px;height:7px;border-right:2px solid #6b7280;border-bottom:2px solid #6b7280;transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+.panels .panel.collapsed h3::after{transform:rotate(-45deg)}
+.panels .panel:first-child h3:hover{background:#f9fafb}
+.panels .panel:first-child h3:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.panels .panel.collapsed #workingList{display:none}
+@media(min-width:901px){.panels:has(.panel:first-child.collapsed){grid-template-columns:150px repeat(4,minmax(0,1fr))}}
+
+/* Agent file: single calendar view, no view switcher */
+#rosterView{display:none}
+.cal-day{min-height:118px}
+.cal-brk{display:flex;flex-wrap:wrap;gap:1px 8px;margin-top:3px;padding-top:4px;border-top:1px solid rgba(0,0,0,.08);font-size:11px;font-weight:500;line-height:1.35}
+.cal-brk b{font-weight:600;opacity:.75}
+@media(max-width:768px){.cal-brk{display:none}}
 </style>
 </head>
 
@@ -459,8 +476,7 @@ td.sc-good::before,td.sc-mid::before,td.sc-low::before{content:"";display:inline
     <div class="nav-label">Overview</div>
     <a class="tab-btn" href="#summaryTab" data-tab="summaryTab">Summary</a>
     <div class="nav-label">Schedule</div>
-    <a class="tab-btn" href="#scheduleTab" data-tab="scheduleTab">Daily Schedule</a>
-    <a class="tab-btn" href="#rosterTab" data-tab="rosterTab">Monthly View Schedule</a>
+    <a class="tab-btn" href="#rosterTab" data-tab="rosterTab">Agent Schedule</a>
     <a class="tab-btn" href="#teamTab" data-tab="teamTab">Team roster</a>
     <div class="nav-label">Performance</div>
     <a class="tab-btn" href="#qaTab" data-tab="qaTab">Quality Assurance</a>
@@ -1632,6 +1648,10 @@ function rosterCalendarHtml({ r, cells }, today, ph) {
   let chg = 0;
   const days = cells.map(c => {
     const a = c.att, p = parseShift(c.shift);
+    const eD = c.estDate || c.date, dd = dailyFor(r, eD);
+    const bv = dd ? [dd.b1, dd.lunch, dd.b2, dd.b3] : [r['Break 1'], r['Lunch'], r['Break 2'], r['Break 3']];
+    const bt = t => ph ? short12(phHHMM(eD, tm(t))) : short12(t);
+    const brk = p ? ['B1', 'Lunch', 'B2', 'B3'].map((l, i) => bv[i] ? `<span><b>${l}</b> ${bt(bv[i])}</span>` : '').join('') : '';
     const len = p ? (p[1] <= p[0] ? p[1] + 1440 - p[0] : p[1] - p[0]) : 0;
     const changed = c.shiftChg || c.supChg;
     if (changed) chg++;
@@ -1639,6 +1659,7 @@ function rosterCalendarHtml({ r, cells }, today, ph) {
     return `<div class="cal-day st-${a.kind}${changed ? ' chg-out' : ''}${c.date === today ? ' is-today' : ''}" title="${esc(ph && c.estDate ? `PH ${fmtDate(parseYMD(c.date))} · EST shift date ${fmtDate(parseYMD(c.estDate))} · ${a.text}` + (a.missed ? ' · ' + missedText(a) : '') : trackerTip(a))}">
       <div class="cal-num">${parseYMD(c.date).getDate()}</div>
       <div class="cal-status">${c.shiftChg ? '🔁 ' : ''}${time}</div>
+      ${brk ? `<div class="cal-brk" title="Scheduled breaks and lunch (${ph ? 'PH' : 'EST'})">${brk}</div>` : ''}
       ${a.kind === 'off' ? '' : `<div class="cal-status" style="font-size:11px">${a.icon} ${esc(a.text)}</div>`}
       ${a.missed ? `<div class="cal-note">${esc(missedText(a))}</div>` : ''}
       ${c.shiftChg ? `<div class="cal-note">Was ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)}</div>` : ''}
@@ -3115,6 +3136,18 @@ function setPageHead(id){
   document.body.classList.remove('nav-open');
 }
 window.addEventListener('load', () => setPageHead(activeTab));
+/* Dashboard: collapse / expand the Working list */
+(function(){
+  const list = document.getElementById('workingList'); if (!list) return;
+  const panel = list.closest('.panel'), h = panel.querySelector('h3'), KEY = 'ditsc_working_collapsed';
+  const set = on => { panel.classList.toggle('collapsed', on); h.setAttribute('aria-expanded', !on); h.title = on ? 'Expand Working list' : 'Collapse Working list'; };
+  h.setAttribute('role', 'button'); h.tabIndex = 0;
+  let saved = false; try { saved = localStorage.getItem(KEY) === '1'; } catch (e) {}
+  set(saved);
+  const toggle = () => { const on = !panel.classList.contains('collapsed'); set(on); try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {} };
+  h.addEventListener('click', toggle);
+  h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+})();
 </script>
 </body>
 </html>
