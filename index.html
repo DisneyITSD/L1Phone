@@ -891,9 +891,16 @@ html[data-theme=dark] #workingList li.sup-h{color:var(--ink)}
 const SHEET_ID = '13whMJorFWHuylEfFDwbB30yobPtQ_G3EfAZtv040kQE';
 const sheetUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
 const scheduleUrl = gid => sheetUrl(gid) + '&headers=1';
+/* Paste the number after "gid=" from the LOLI Actual tab's address bar here (most reliable). Empty = find the tab by its name. */
+const LOLI_GID = '74611449';
+/* gid of the log-in / log-out dispute form's response tab. Approved disputes replace the actual time (same as the supervisor view). Empty = off. */
+const DISPUTE_GID = '1843274746';
+/* true = a dispute only counts once the manager types "Approved" in the response tab's "Approval Status" column */
+const DISPUTE_NEEDS_APPROVAL = true;
 const URLS = {
   pto: sheetUrl(1297010746),
   calledOff: sheetUrl(2139820898),
+  loli: LOLI_GID ? sheetUrl(LOLI_GID) : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('LOLI Actual')}`,   // "LOLI Actual" tab: Agent Name (ID) | Agent Name | Date | Min of Login | Max of Logout
   attTime: sheetUrl(417537234),            // "ATTENDANCE TIME" tab: Name | EST Date | Type | Actual Time
   announcements: sheetUrl(6259028),
   qa: scheduleUrl(337356668),              // "QA" tab (&headers=1 forces row 1 to be read as the header)
@@ -936,6 +943,10 @@ const ATT_OTHER = { code: 'CO', icon: '🚫', color: '#dc3545', label: 'Called O
    ===================================================================== */
 let estData = [], phData = [];
 let ptoList = [], calledOffList = [], announcementList = [], attTimeList = [], qaList = [];
+let disputeIdx = new Map();   // normalized agent + '|' + EST shift date -> { login, logout, reason }
+let disputeInfo = { rows: 0, pending: 0, rejected: 0, noStatus: false, error: '' };
+let loliInfo = { rows: 0, agents: 0, error: '', sample: '' };
+let loliIdx = new Map();     // normalized agent name -> [{date, login, logout}] from the "LOLI Actual" tab
 let dailyMap = new Map();
 let activeTab = 'scheduleTab';
 let metricHeads = [], metricWeights = [], metricRows = [];
@@ -1156,12 +1167,23 @@ const loadSheet = async url =>
 
 async function loadAttendance() {
   try {
-    [ptoList, calledOffList, announcementList, attTimeList] = await Promise.all([
+    let loliRows, disputeRows;
+    disputeInfo = { rows: 0, pending: 0, rejected: 0, noStatus: false, error: '' };
+    loliInfo = { rows: 0, agents: 0, error: '', sample: '' };
+    [ptoList, calledOffList, announcementList, attTimeList, loliRows, disputeRows] = await Promise.all([
       loadSheet(URLS.pto),
       loadSheet(URLS.calledOff),
       fetchCSV(URLS.announcements),
-      loadSheet(URLS.attTime).catch(() => [])      // if this tab fails, everything else keeps working
+      loadSheet(URLS.attTime).catch(() => []),      // if this tab fails, everything else keeps working
+      fetchCSV(URLS.loli, { raw: true }).catch(e => { loliInfo.error = e.message; return []; }),
+      DISPUTE_GID ? fetchCSV(sheetUrl(DISPUTE_GID), { raw: true }).catch(e => { disputeInfo.error = e.message; return []; }) : Promise.resolve([])
     ]);
+    disputeIdx = buildDisputeIndex(disputeRows);
+    loadErrors.dispute = disputeInfo.error ? `Couldn't load the dispute form responses (${disputeInfo.error}) - check DISPUTE_GID and sharing`
+                       : disputeInfo.noStatus ? 'Disputes need approval but the response tab has no "Approval Status" column - add it next to the form columns' : '';
+    loliIdx = buildLoliIndex(loliRows);
+    loadErrors.loli = loliInfo.error ? `Couldn't load the "LOLI Actual" tab (${loliInfo.error}) - check the tab name and sharing`
+                    : !loliInfo.rows ? 'The "LOLI Actual" tab was read but no log-in rows were found (' + loliInfo.sample + ') - the tab name may not be matching; set LOLI_GID in the code' : '';
     loadErrors.attendance = '';
     lastUpdated = new Date();
   } catch (err) {
@@ -1726,7 +1748,7 @@ function rosterCalendarHtml({ r, cells }, today, ph) {
     const changed = c.shiftChg || c.supChg;
     if (changed) chg++;
     const time = !p ? 'OFF' : ph ? phRange(c.estDate || c.date, p[0], len) + ' PH' : convertShiftRange(c.shift) + ' EST';
-    return `<div class="cal-day st-${a.kind}${changed ? ' chg-out' : ''}${c.date === today ? ' is-today' : ''}" title="${esc(ph && c.estDate ? `PH ${fmtDate(parseYMD(c.date))} · EST shift date ${fmtDate(parseYMD(c.estDate))} · ${a.text}` + (a.missed ? ' · ' + missedText(a) : '') : trackerTip(a))}">
+    return `<div class="cal-day st-${a.kind}${changed ? ' chg-out' : ''}${c.date === today ? ' is-today' : ''}" title="${esc(ph && c.estDate ? `PH ${fmtDate(parseYMD(c.date))} · EST shift date ${fmtDate(parseYMD(c.estDate))} · ${a.text}` + (a.missed ? ' · ' + missedText(a) : '') + (actualTip(a) ? '\n' + actualTip(a) : '') : trackerTip(a))}">
       <div class="cal-num">${parseYMD(c.date).getDate()}</div>
       <div class="cal-status">${c.shiftChg ? '🔁 ' : ''}${time}</div>
       ${a.kind === 'off' ? '' : `<div class="cal-status" style="font-size:11px">${a.icon} ${esc(a.text)}</div>`}
@@ -2841,6 +2863,99 @@ function shiftsAround(r, date) {
    missed (estimated, marked *) until the actual times are submitted.
    ===================================================================== */
 const SHIFT_HOURS_DEFAULT = 11;
+/* ---------- LOLI Actual tab: actual log-in / log-out per agent per day ----------
+   Times are read as EST clock times (same as the schedule). Up to LOLI_GRACE_MIN minutes
+   late / early is ignored; beyond that the day is counted as Late / Left early and the
+   minutes are deducted from the hours worked. */
+const LOLI_GRACE_MIN = 10;
+function parseLoliDate(v) {
+  const s = clean(v);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})\D+(\d{1,2})\D+(\d{4})$/);          // "11 6 2026" or "11/6/2026" = month day year
+  return m ? `${m[3]}-${pad(+m[1])}-${pad(+m[2])}` : normalizeDate(s);
+}
+function parseLoliClock(v) {
+  const s = clean(v);
+  const a = parseClock(s);
+  if (a != null) return a;
+  const m = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp])?/);     // time buried inside a date-time text
+  if (!m) return null;
+  let h = +m[1];
+  const ap = (m[3] || '').toUpperCase();
+  if (ap === 'P' && h < 12) h += 12;
+  if (ap === 'A' && h === 12) h = 0;
+  return h * 60 + +m[2];
+}
+function buildLoliIndex(rows) {
+  const m = new Map();
+  /* Find the columns from the header row; fall back to B, C, D, E */
+  let c = { name: 1, date: 2, login: 3, logout: 4 };
+  const h = rows.findIndex(r => r.some(x => /^agent name$/i.test(clean(x))));
+  if (h >= 0) {
+    const f = re => rows[h].findIndex(x => re.test(clean(x)));
+    c = { name: f(/^agent name$/i), date: f(/^date$/i), login: f(/log.?in/i), logout: f(/log.?out/i) };
+    if (Object.values(c).some(i => i < 0)) c = { name: 1, date: 2, login: 3, logout: 4 };
+  }
+  let n = 0;
+  rows.forEach(r => {
+    const name = clean(r[c.name]), date = parseLoliDate(r[c.date]);
+    const login = parseLoliClock(r[c.login]), logout = parseLoliClock(r[c.logout]);
+    if (!name || !date || login == null) return;                      // skips the header row and blanks
+    const k = normName(name);
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push({ date, login, logout });
+    n++;
+  });
+  loliInfo.rows = n; loliInfo.agents = m.size;
+  loliInfo.sample = rows.length ? `${rows.length} rows read; first row: ${(rows[0] || []).slice(0, 5).map(x => clean(x).slice(0, 25)).join(' | ')}` : 'the tab came back empty';
+  return m;
+}
+/* Dispute form responses: Timestamp | Supervisor | Agent Name | Shift Date (EST) | Disputed Log-in Time (EST) | Disputed Log-out Time (EST) | Reason.
+   Columns are found by their header words. The latest submission per agent + date wins, field by field. */
+function buildDisputeIndex(rows) {
+  const m = new Map();
+  const h = rows.findIndex(r => r.some(x => /agent/i.test(clean(x))) && r.some(x => /log.?in/i.test(clean(x)) || /log.?out/i.test(clean(x))));
+  if (h < 0) { disputeInfo.rows = 0; return m; }
+  const f = re => rows[h].findIndex(x => re.test(clean(x)));
+  const c = { name: f(/agent/i), date: f(/date/i), login: f(/log.?in/i), logout: f(/log.?out/i), reason: f(/reason/i), status: f(/status|approv/i) };
+  if (DISPUTE_NEEDS_APPROVAL && c.status < 0) disputeInfo.noStatus = true;
+  if (c.name < 0 || c.date < 0) return m;
+  let n = 0;
+  rows.slice(h + 1).forEach(r => {
+    const name = clean(r[c.name]), date = parseLoliDate(r[c.date]);
+    if (!name || !date) return;
+    const login = c.login >= 0 ? parseLoliClock(r[c.login]) : null;
+    const logout = c.logout >= 0 ? parseLoliClock(r[c.logout]) : null;
+    if (login == null && logout == null) return;
+    if (DISPUTE_NEEDS_APPROVAL) {                                     // only rows the manager marked Approved count
+      const st = c.status >= 0 ? up(r[c.status]) : '';
+      if (st !== 'APPROVED') { if (st === 'REJECTED' || st === 'DENIED') disputeInfo.rejected++; else disputeInfo.pending++; return; }
+    }
+    const k = normName(name) + '|' + date, o = m.get(k) || { login: null, logout: null, reason: '' };
+    if (login != null) o.login = login;
+    if (logout != null) o.logout = logout;
+    if (c.reason >= 0 && clean(r[c.reason])) o.reason = clean(r[c.reason]);
+    m.set(k, o);
+    n++;
+  });
+  disputeInfo.rows = n;
+  return m;
+}
+
+/* The agent's LOLI record that belongs to this scheduled shift: the one whose login is closest to the shift start
+   (so a 11:57 PM login for a 12:00 AM shift still belongs to the next day's shift) */
+function loliFor(r, date, shift) {
+  const recs = loliIdx.get(normName(r.Name)), p = parseShift(shift);
+  if (!recs || !p) return null;
+  const start = parseYMD(date).getTime() + p[0] * 60000;
+  let best = null, bestD = Infinity;
+  recs.forEach(x => {
+    const d = Math.abs(parseYMD(x.date).getTime() + x.login * 60000 - start) / 60000;
+    if (d < bestD) { bestD = d; best = x; }
+  });
+  return bestD <= 600 ? best : null;
+}
+const loliClock = m => m == null ? '' : fmtAMPM(toHHMM(m));
 function shiftHours(shift) {
   const p = parseShift(shift);
   if (!p) return SHIFT_HOURS_DEFAULT;
@@ -2869,7 +2984,7 @@ const TRACKER_STATUS = {
 };
 const TRACKER_LEGEND = [
   ['present', '✔ Present (shift finished, no record)'], ['upcoming', '○ Upcoming (shift not finished yet)'],
-  ['partial', '◐ Late / Left early (worked, partial shift; * = estimated half shift)'],
+  ['partial', `◐ Late / Left early (actual login / logout from LOLI Actual, more than ${LOLI_GRACE_MIN} min off the shift; * = estimated half shift)`],
   ['absent', '✖ Called off / NCNS'], ['leave', '🌴 Leave (VL, SL, ...)'], ['off', '– OFF']
 ];
 
@@ -2932,7 +3047,36 @@ function attendanceFor(r, date, today, idx) {
   x.estimated = false;
   x.inTime = rec?.loginTime || '';
   x.outTime = rec?.logoutTime || '';
-  if (x.kind === 'partial') {
+
+  /* Actual log-in / log-out from the LOLI Actual tab (a supervisor-submitted time entry still takes priority) */
+  const p0 = parseShift(x.shift);
+  const eligible = !x.inTime && !x.outTime && p0 && ['present', 'upcoming', 'partial'].includes(x.kind);
+  const loli = eligible ? loliFor(r, date, x.shift) : null;
+  const dsp = eligible ? disputeIdx.get(normName(r.Name) + '|' + date) : null;    // supervisor dispute replaces the actual time
+  const act = loli || dsp ? { login: dsp?.login ?? loli?.login ?? null, logout: dsp?.logout ?? loli?.logout ?? null } : null;
+  if (act) {
+    const ended = shiftEnded(x.shift, date, today);
+    const late = act.login != null ? Math.max(0, clockDiff(act.login, p0[0])) : 0;
+    const early = (ended || dsp?.logout != null) && act.logout != null ? Math.max(0, clockDiff(p0[1], act.logout)) : 0;
+    const lateC = late > LOLI_GRACE_MIN ? late : 0, earlyC = early > LOLI_GRACE_MIN ? early : 0;
+    x.actual = true;
+    x.inDisputed = dsp?.login != null;
+    x.outDisputed = dsp?.logout != null;
+    x.disputeReason = dsp?.reason || '';
+    x.inTime = loliClock(act.login);
+    x.outTime = ended || dsp?.logout != null ? loliClock(act.logout) : '';
+    x.missed = lateC + earlyC;
+    if (lateC || earlyC) {
+      const code = lateC && earlyC ? 'L/LE' : lateC ? 'LATE' : 'LE';
+      Object.assign(x, { kind: 'partial', text: lateC && earlyC ? 'Late / Left early' : lateC ? 'Late' : 'Left early', code, icon: TRACKER_STATUS.partial.icon,
+        reason: [lateC ? `Late ${lateC} min` : '', earlyC ? `Left early ${earlyC} min` : ''].filter(Boolean).join(' + ') });
+    } else if (dsp && x.kind === 'partial') {
+      /* A dispute cleared the lateness: count the day as present */
+      const t = TRACKER_STATUS[ended ? 'present' : 'upcoming'];
+      Object.assign(x, { kind: ended ? 'present' : 'upcoming', text: t.label, code: t.icon, icon: t.icon, reason: '' });
+    }
+  }
+  if (x.kind === 'partial' && !x.actual) {
     const p = parseShift(x.shift);
     const inT = parseClock(x.inTime), outT = parseClock(x.outTime);
     if (inT == null && outT == null) {
@@ -2966,12 +3110,10 @@ const trackerPct = c => c.pct == null ? '—' : c.pct.toFixed(1) + '%';
 /* "120 min missed" or "330 min missed (est. half shift)" */
 const missedText = x => x.missed ? `${x.missed} min missed${x.estimated ? ' (est. half shift)' : ''}` : '';
 
-const trackerTip = x =>
-  `${fmtDate(parseYMD(x.date))} · ${x.text}` +
-  (x.reason && up(x.reason) !== up(x.text) ? ` (${x.reason})` : '') +
-  (x.shift ? ` · ${convertShiftRange(x.shift)}` : '') +
-  (x.missed ? ` · ${missedText(x)}` : '') +
-  (x.inTime ? ` · login ${x.inTime}` : '') + (x.outTime ? ` · logout ${x.outTime}` : '');
+/* Hover text: only the actual log-in / log-out times (empty when there is no LOLI data for the day) */
+const actualTip = x => x.inTime || x.outTime ? `Log-in Time: ${x.inTime || '—'}${x.inDisputed ? ' (disputed)' : ''}\nLog-out Time: ${x.outTime || '—'}${x.outDisputed ? ' (disputed)' : ''}` : '';
+
+const trackerTip = x => actualTip(x);
 
 function trackerHeaderHtml(r, info) {
   const c = trackerSummary(info);
