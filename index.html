@@ -275,13 +275,6 @@ tr.grp-head:hover{filter:brightness(.97)}
 .attn li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
 .attn li small{color:var(--muted);display:block}
 .attn li strong{white-space:nowrap}
-#sumSupTable td{text-align:center}
-#sumSupTable td:first-child,#sumSupTable th:first-child{text-align:left;font-weight:600}
-#sumSupTable th{text-align:center;cursor:default}
-#sumSupTable tr.sum-total td{font-weight:700;border-top:2px solid var(--line)}
-#sumSupTable td.sc-good{background:#e8f5e9;color:#2e7d32;font-weight:600}
-#sumSupTable td.sc-mid{background:#fff8e1;color:#b26a00;font-weight:600}
-#sumSupTable td.sc-low{background:#ffebee;color:#c62828;font-weight:600}
 .bars{display:flex;align-items:flex-end;gap:6px}
 .bar-col{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
 .bar-val{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:2px}
@@ -599,11 +592,6 @@ html[data-theme=dark] #workingList li.sup-h{color:var(--ink)}
 
   <h3 class="sum-h" id="sumTodayTitle">Today's staffing</h3>
   <div class="daily-summary" id="sumToday"></div>
-
-  <h3 class="sum-h">Supervisor comparison</h3>
-  <div class="panel"><div class="schedule-container" style="height:auto;max-height:60vh">
-    <table id="sumSupTable" class="nosort"><thead></thead><tbody></tbody></table>
-  </div></div>
 
   <h3 class="sum-h">Top performers</h3>
   <div class="podium" id="sumPodium"></div>
@@ -2401,24 +2389,14 @@ function buildSummary() {
     `<div class="summary-box">📋 Leave: <span>${lv}</span></div><div class="summary-box">🚫 Absenteeism: <span>${ab}</span></div>` +
     `<div class="summary-box">⚫ OFF: <span>${day.length - sched}</span></div>`;
 
-  /* 3. Supervisor comparison (always every supervisor) */
-  const sups = [...new Set(all.map(a => a.sup))].sort((a, b) => a.localeCompare(b));
-  const td = (k, v, txt) => `<td class="${bandOf(k, v) ? 'sc-' + bandOf(k, v) : ''}">${txt}</td>`;
-  const supRow = (label, g, cls, st) => `<tr class="${cls}" style="${st || ''}"><td>${esc(label)}</td><td>${g.n}</td>` +
-    td('att', g.pct, g.pct == null ? '—' : g.pct.toFixed(1) + '%') + td('qa', g.qa, g.qa == null ? '—' : g.qa.toFixed(1) + '%') +
-    td('total', g.total, f2(g.total)) + td('fcr', g.fcr, f2(g.fcr)) + `<td>${g.abs}</td><td>${g.late}</td></tr>`;
-  $('sumSupTable').tHead.innerHTML = '<tr><th>🧑‍💼 Supervisor</th><th>Agents</th><th>Attendance</th><th>Avg QA</th><th>Avg total</th><th>Avg FCR</th><th title="Called off / NCNS days">Absences</th><th title="Late / left early days">Late / LE</th></tr>';
-  $('sumSupTable').tBodies[0].innerHTML = sups.map(s => supRow(s, sumTeam(all.filter(a => a.sup === s)), supClass(s), supStyle(s))).join('') +
-    supRow('Team total', sumTeam(all), 'sum-total', '');
-
-  /* 4. Top 3 */
+  /* 3. Top 3 */
   const medals = [['🥇', '#f5b301'], ['🥈', '#94a3b8'], ['🥉', '#cd7f32']];
   const top = list.filter(a => a.total != null).sort((a, b) => b.total - a.total).slice(0, 3);
   $('sumPodium').innerHTML = top.length ? top.map((a, n) => `<div class="pod" style="--c:${medals[n][1]}"><div class="medal">${medals[n][0]}</div>
     <div class="pn">${esc(a.name)}</div><div class="ps">${a.total.toFixed(2)}</div><small>${esc(a.sup)}</small></div>`).join('')
     : '<div class="empty" style="--c:#6c757d">No scores for these months yet</div>';
 
-  /* 5. Needs attention */
+  /* 4. Needs attention */
   const attn = (title, items, fmt) => `<div class="panel"><h3>${title}</h3><ul class="attn">` + (items.length
     ? items.map(a => `<li><span>${esc(a.name)}<small>${esc(a.sup)}</small></span><strong>${fmt(a)}</strong></li>`).join('')
     : '<li class="empty" style="--c:#6c757d">Nothing to flag</li>') + '</ul></div>';
