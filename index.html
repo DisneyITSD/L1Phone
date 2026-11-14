@@ -235,6 +235,10 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 .trk-grid td.trk-name:hover{text-decoration:underline}
 .trk-grid td.trk-agent{font-weight:600;color:var(--navy)}
 .trk-grid td.trk-shift{font-size:11.5px;color:var(--muted);min-width:128px;background:#fafbfc}
+.view-more{margin:16px 0 8px;font-size:13px;color:var(--muted)}
+.view-more>summary{cursor:pointer;font-weight:600;color:var(--navy);user-select:none;width:fit-content}
+.view-more>summary:hover{text-decoration:underline}
+.view-more .view-hint{margin:8px 0 0}
 .trk-grid td.trk-sum.st-present{background:#e8f5e9;color:#2e7d32}
 .trk-grid td.trk-sum.st-partial{background:#fff3e0;color:#e65100}
 .trk-grid td.trk-sum.st-absent{background:#ffebee;color:#c62828}
@@ -985,7 +989,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SCORECARD: ATTENDANCE ============ -->
 <section class="tab-panel" id="trackerTab" hidden>
-  <div class="view-hint">🗓️ Per-agent attendance for the month: ✔ present (once the shift has finished), ◐ late / left early (counted by hours worked; marked * when no actual time is submitted yet and a half shift is assumed), ✖ called off, leave or OFF.<br>The Shift column shows each agent's usual shift in EST (🔁 = it changes during the month; hover for the breakdown).<br>Click an agent's name in the grid to open their calendar.</div>
+  <div class="view-hint">🗓️ Per-agent attendance for the month: ✔ present, ◐ late / left early, ✖ called off, leave or OFF.<br>Click an agent's name in the grid to open their calendar.</div>
   <div class="controls">
     <button type="button" onclick="shiftTrackerMonth(-1)" title="Previous month">‹</button>
     <input type="month" id="trackerMonth" onchange="buildTracker()">
@@ -1001,11 +1005,14 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
   </div>
   <div class="trk-legend" id="trackerLegend"></div>
   <div id="trackerBody"></div>
+  <details class="view-more"><summary>ℹ️ How attendance is counted</summary>
+    <div class="view-hint">✔ Present is shown once the shift has finished.<br>◐ Late / left early is counted by hours worked; it is marked * when no actual time is submitted yet and a half shift is assumed.<br>The Shift column shows each agent's usual shift in EST (🔁 = it changes during the month; hover for the breakdown).</div>
+  </details>
 </section>
 
 <!-- ============ SCORECARD: QUALITY ASSURANCE ============ -->
 <section class="tab-panel" id="qaTab" hidden>
-  <div class="view-hint">✅ Quality Assurance scores by analyst, ranked by average score.<br>Tick one or more months (or Year to date).<br>Click an agent (▸) to open their audits; with several months ticked, open a month to see its audits.<br>Click a column title to sort.</div>
+  <div class="view-hint">✅ Quality Assurance scores by analyst, ranked by average score.<br>Tick one or more months (or Year to date); click an agent (▸) to open their audits.</div>
   <div class="controls">
     <div class="msel" id="qaMonthWrap">
       <button type="button" id="qaMonthBtn" class="msel-btn">Month ▾</button>
@@ -1030,11 +1037,14 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
       </table>
     </div>
   </div>
+  <details class="view-more"><summary>ℹ️ More about this table</summary>
+    <div class="view-hint">With several months ticked, open a month to see its audits.<br>Click a column title to sort.</div>
+  </details>
 </section>
 
 <!-- ============ SCORECARD: OVERALL METRIC ============ -->
 <section class="tab-panel" id="metricTab" hidden>
-  <div class="view-hint">📊 Performance stack ranking per agent.<br>Tick one or more months (or Year to date): each agent then shows one row with their average, ranked by it.<br>Click an agent (▸) to open their monthly scores.<br>Click a column title to sort.</div>
+  <div class="view-hint">📊 Performance stack ranking per agent.<br>Tick one or more months (or Year to date); click an agent (▸) to open their monthly scores.</div>
   <div class="controls">
     <div class="msel" id="metricMonthWrap">
       <button type="button" id="metricMonthBtn" class="msel-btn">Month ▾</button>
@@ -1055,11 +1065,14 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
       <table id="metricTable"><thead></thead><tbody></tbody></table>
     </div>
   </div>
+  <details class="view-more"><summary>ℹ️ More about this table</summary>
+    <div class="view-hint">Each agent shows one row with their average, ranked by it.<br>Click a column title to sort.</div>
+  </details>
 </section>
 
 <!-- ============ SCORECARD: METRIC SCORECARD (actual scores) ============ -->
 <section class="tab-panel" id="mcsTab" hidden>
-  <div class="view-hint">📈 Actual scores per agent.<br>Tick one or more months (or Year to date); in the Total row, counts are added up and rates and times are averaged.<br>With several months ticked, each agent shows one row with the Total; click an agent (▸) to open their monthly scores.<br>With one month ticked, click a column title to sort.</div>
+  <div class="view-hint">📈 Actual scores per agent.<br>Tick one or more months (or Year to date); click an agent (▸) to open their monthly scores.</div>
   <div class="note red" id="mcsNote" hidden></div>
   <div class="controls">
     <div class="msel" id="mcsMonthWrap">
@@ -1078,6 +1091,9 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
       <table id="mcsTable"><thead></thead><tbody></tbody></table>
     </div>
   </div>
+  <details class="view-more"><summary>ℹ️ More about this table</summary>
+    <div class="view-hint">In the Total row, counts are added up and rates and times are averaged.<br>With several months ticked, each agent shows one row with the Total. With one month ticked, click a column title to sort.</div>
+  </details>
 </section>
 
 </main>
