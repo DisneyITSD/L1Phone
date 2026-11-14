@@ -234,6 +234,7 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 .trk-grid td.trk-name{cursor:pointer;font-weight:600;color:var(--navy)}
 .trk-grid td.trk-name:hover{text-decoration:underline}
 .trk-grid td.trk-agent{font-weight:600;color:var(--navy)}
+.trk-grid td.trk-shift{font-size:11.5px;color:var(--muted);min-width:128px;background:#fafbfc}
 .trk-grid td.trk-sum.st-present{background:#e8f5e9;color:#2e7d32}
 .trk-grid td.trk-sum.st-partial{background:#fff3e0;color:#e65100}
 .trk-grid td.trk-sum.st-absent{background:#ffebee;color:#c62828}
@@ -774,7 +775,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SUMMARY ============ -->
 <section class="tab-panel" id="summaryTab" hidden>
-  <div class="view-hint">📈 Team summary: attendance, quality, performance score and volumes for the months you pick. Choose one or more months (or Year to date) and a supervisor.</div>
+  <div class="view-hint">📈 Team summary: attendance, quality, performance score and volumes for the months you pick.<br>Choose one or more months (or Year to date) and a supervisor.</div>
   <div class="controls">
     <div class="msel" id="sumMonthWrap">
       <button type="button" id="sumMonthBtn" class="msel-btn">Month ▾</button>
@@ -872,7 +873,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ MONTHLY ROSTER ============ -->
 <section class="tab-panel" id="rosterTab" hidden>
-  <div class="view-hint">📊 Monthly schedule per agent, built from the weekly roster plus the "Schedule By Date" tab. Colours show each day's attendance (same rules as Scorecard › Attendance). A purple outline 🔁 marks days changed from the weekly roster. Hover a cell for details.</div>
+  <div class="view-hint">📊 Monthly schedule per agent, built from the weekly roster plus the "Schedule By Date" tab.<br>Colours show each day's attendance (same rules as Scorecard › Attendance).<br>A purple outline 🔁 marks days changed from the weekly roster.<br>Hover a cell for details.</div>
   <div class="controls">
     <button type="button" onclick="shiftRosterMonth(-1)" title="Previous month">‹</button>
     <input type="month" id="rosterMonth" onchange="buildRosterView()">
@@ -956,7 +957,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ LATE / LEFT EARLY ============ -->
 <section class="tab-panel" id="lateTab" hidden>
-  <div class="view-hint">⏱️ Actual login and logout times for agents who were running late or left early. Minutes missed are calculated from the agent's shift.</div>
+  <div class="view-hint">⏱️ Actual login and logout times for agents who were running late or left early.<br>Minutes missed are calculated from the agent's shift.</div>
   <div class="controls">
     <input type="date" id="lateDate" onchange="buildLateTable()">
     <select id="lateSupervisor" onchange="buildLateTable()"><option>All Supervisors</option></select>
@@ -984,7 +985,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SCORECARD: ATTENDANCE ============ -->
 <section class="tab-panel" id="trackerTab" hidden>
-  <div class="view-hint">🗓️ Per-agent attendance for the month: ✔ present (once the shift has finished), ◐ late / left early (counted by hours worked; marked * when no actual time is submitted yet and a half shift is assumed), ✖ called off, leave or OFF. Click an agent's name in the grid to open their calendar.</div>
+  <div class="view-hint">🗓️ Per-agent attendance for the month: ✔ present (once the shift has finished), ◐ late / left early (counted by hours worked; marked * when no actual time is submitted yet and a half shift is assumed), ✖ called off, leave or OFF.<br>The Shift column shows each agent's usual shift in EST (🔁 = it changes during the month; hover for the breakdown).<br>Click an agent's name in the grid to open their calendar.</div>
   <div class="controls">
     <button type="button" onclick="shiftTrackerMonth(-1)" title="Previous month">‹</button>
     <input type="month" id="trackerMonth" onchange="buildTracker()">
@@ -1004,7 +1005,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SCORECARD: QUALITY ASSURANCE ============ -->
 <section class="tab-panel" id="qaTab" hidden>
-  <div class="view-hint">✅ Quality Assurance scores by analyst, ranked by average score. Tick one or more months (or Year to date). Click an agent (▸) to open their audits; with several months ticked, open a month to see its audits. Click a column title to sort.</div>
+  <div class="view-hint">✅ Quality Assurance scores by analyst, ranked by average score.<br>Tick one or more months (or Year to date).<br>Click an agent (▸) to open their audits; with several months ticked, open a month to see its audits.<br>Click a column title to sort.</div>
   <div class="controls">
     <div class="msel" id="qaMonthWrap">
       <button type="button" id="qaMonthBtn" class="msel-btn">Month ▾</button>
@@ -1033,7 +1034,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SCORECARD: OVERALL METRIC ============ -->
 <section class="tab-panel" id="metricTab" hidden>
-  <div class="view-hint">📊 Performance stack ranking per agent. Tick one or more months (or Year to date): each agent then shows one row with their average, ranked by it. Click an agent (▸) to open their monthly scores. Click a column title to sort.</div>
+  <div class="view-hint">📊 Performance stack ranking per agent.<br>Tick one or more months (or Year to date): each agent then shows one row with their average, ranked by it.<br>Click an agent (▸) to open their monthly scores.<br>Click a column title to sort.</div>
   <div class="controls">
     <div class="msel" id="metricMonthWrap">
       <button type="button" id="metricMonthBtn" class="msel-btn">Month ▾</button>
@@ -1058,7 +1059,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SCORECARD: METRIC SCORECARD (actual scores) ============ -->
 <section class="tab-panel" id="mcsTab" hidden>
-  <div class="view-hint">📈 Actual scores per agent. Tick one or more months (or Year to date); in the Total row, counts are added up and rates and times are averaged. With several months ticked, each agent shows one row with the Total; click an agent (▸) to open their monthly scores. With one month ticked, click a column title to sort.</div>
+  <div class="view-hint">📈 Actual scores per agent.<br>Tick one or more months (or Year to date); in the Total row, counts are added up and rates and times are averaged.<br>With several months ticked, each agent shows one row with the Total; click an agent (▸) to open their monthly scores.<br>With one month ticked, click a column title to sort.</div>
   <div class="note red" id="mcsNote" hidden></div>
   <div class="controls">
     <div class="msel" id="mcsMonthWrap">
@@ -3443,7 +3444,7 @@ const missedText = x => x.missed ? `${x.missed} min missed${x.estimated ? ' (est
 const fmtHrs = h => { const m = Math.round(h * 60); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
 const actualTip = x => x.autoNcns ? 'NCNS - no log-in / log-out in LOLI Actual' : x.inTime || x.outTime ? `Log-in Time: ${x.inTime || '—'}${x.inDisputed ? ' (disputed)' : ''}\nLog-out Time: ${x.outTime || '—'}${x.outDisputed ? ' (disputed)' : ''}${x.loggedHrs != null ? `\nTotal logged-in: ${fmtHrs(x.loggedHrs)} hrs` : ''}` : '';
 
-const trackerTip = x => actualTip(x);
+const trackerTip = x => [x.shift && !isOff(x.shift) ? `Shift: ${convertShiftRange(x.shift)} EST` : '', actualTip(x)].filter(Boolean).join('\n');
 
 function trackerHeaderHtml(r, info) {
   const c = trackerSummary(info);
@@ -3462,6 +3463,19 @@ let trackerPctSort = '';
 function toggleTrackerPctSort() {
   trackerPctSort = trackerPctSort === '' ? 'asc' : trackerPctSort === 'asc' ? 'desc' : '';
   buildTracker();
+}
+
+/* Shift column: the agent's usual shift for the month (most common non-OFF shift, EST) */
+function trackerShiftInfo(info) {
+  const cnt = new Map();
+  info.forEach(x => { if (x.shift && !isOff(x.shift)) cnt.set(x.shift, (cnt.get(x.shift) || 0) + 1); });
+  const list = [...cnt.entries()].sort((a, b) => b[1] - a[1]);
+  if (!list.length) return { text: '—', varies: false, tip: 'No shift this month' };
+  return {
+    text: convertShiftRange(list[0][0]),
+    varies: list.length > 1,
+    tip: list.map(([sh, n]) => `${convertShiftRange(sh)} EST - ${n} day${n === 1 ? '' : 's'}`).join('\n')
+  };
 }
 
 function trackerGridHtml(rows, monthOf, days, today) {
@@ -3488,10 +3502,11 @@ function trackerGridHtml(rows, monthOf, days, today) {
   }).join('');
 
   const body = rows.map(r => {
-    const info = monthOf(r), c = trackerSummary(info);
+    const info = monthOf(r), c = trackerSummary(info), sh = trackerShiftInfo(info);
     const cells = info.map(x => `<td class="trk-cell st-${x.kind}" title="${esc(trackerTip(x))}">${esc(x.code)}${x.estimated ? '*' : ''}</td>`).join('');
     return `<tr class="${supClass(r.Supervisor)}" style="${supStyle(r.Supervisor)}">
       <td class="trk-name" data-agent="${esc(r.Name)}" title="Open calendar">${esc(r.Name)}</td>
+      <td class="trk-shift" title="${esc(sh.tip)}">${esc(sh.text)}${sh.varies ? ' 🔁' : ''}</td>
       <td class="trk-sum" title="Expected days">${c.expected}</td>
       <td class="trk-sum" title="Present">${c.present}</td>
       <td class="trk-sum" title="Late / Left early">${c.partial}</td>
@@ -3502,7 +3517,7 @@ function trackerGridHtml(rows, monthOf, days, today) {
   }).join('');
 
   return `<div class="panel"><div class="schedule-container"><table class="nosort trk-grid">
-    <thead><tr><th>👤 Agent</th><th title="Expected days">Exp</th><th title="Present">✔</th><th title="Late / Left early">◐</th><th title="Called off / NCNS">✖</th><th title="Leave">🌴</th><th class="sortable" onclick="toggleTrackerPctSort()" title="Click to sort by attendance % (lowest first, highest first, then by name)">%${sortArrow}</th>${head}</tr></thead>
+    <thead><tr><th>👤 Agent</th><th title="Usual shift for the month (EST). 🔁 = shift changes during the month">🕒 Shift (EST)</th><th title="Expected days">Exp</th><th title="Present">✔</th><th title="Late / Left early">◐</th><th title="Called off / NCNS">✖</th><th title="Leave">🌴</th><th class="sortable" onclick="toggleTrackerPctSort()" title="Click to sort by attendance % (lowest first, highest first, then by name)">%${sortArrow}</th>${head}</tr></thead>
     <tbody>${body}</tbody></table></div></div>`;
 }
 
@@ -3585,14 +3600,14 @@ function downloadTracker() {
   const csvCell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
   const rows = [[
-    'Agent', 'Supervisor', 'Expected days', 'Present', 'Late/Left early', 'Called off', 'Leave',
+    'Agent', 'Supervisor', 'Shift (EST)', 'Expected days', 'Present', 'Late/Left early', 'Called off', 'Leave',
     'Attendance %', 'Hours worked', 'Hours expected',
     ...days.map(d => { const dt = parseYMD(d); return `${dt.getDate()} (${DAYS[dt.getDay()].slice(0, 3)})`; })
   ]];
 
   roster.forEach(r => {
     const info = days.map(d => attendanceFor(r, d, today, idx)), c = trackerSummary(info);
-    rows.push([r.Name, r.Supervisor, c.expected, c.present, c.partial, c.absent, c.leave,
+    rows.push([r.Name, r.Supervisor, trackerShiftInfo(info).text, c.expected, c.present, c.partial, c.absent, c.leave,
                trackerPct(c), c.hoursWorked.toFixed(1), c.hoursExp.toFixed(1), ...info.map(cellText)]);
   });
   rows.push([]);
