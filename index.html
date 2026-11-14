@@ -239,6 +239,14 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 .view-more>summary{cursor:pointer;font-weight:600;color:var(--navy);user-select:none;width:fit-content}
 .view-more>summary:hover{text-decoration:underline}
 .view-more .view-hint{margin:8px 0 0}
+.view-more .vm-sec{margin:0 0 8px}
+.view-more .vm-list{margin:4px 0 0;padding-left:22px}
+.trk-info{margin:0 0 12px;font-size:12.5px;line-height:1.5}
+.trk-info .ti-title{font-weight:700;color:var(--navy);margin:0 0 6px}
+.trk-info .ti-row{display:flex;align-items:center;gap:10px;margin:0 0 5px;flex-wrap:wrap}
+.trk-info .ti-row .trk-chip{min-width:150px;justify-content:flex-start}
+.trk-info .ti-desc{color:var(--muted)}
+.trk-info .ti-sum{display:flex;flex-direction:column;gap:2px;margin:0 0 12px;color:var(--muted)}
 .trk-grid td.trk-sum.st-present{background:#e8f5e9;color:#2e7d32}
 .trk-grid td.trk-sum.st-partial{background:#fff3e0;color:#e65100}
 .trk-grid td.trk-sum.st-absent{background:#ffebee;color:#c62828}
@@ -909,6 +917,20 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
       </tr></thead><tbody></tbody></table>
     </div>
   </div>
+  <details class="view-more"><summary>ℹ️ How attendance is calculated</summary>
+    <div class="view-hint">
+      <div class="vm-sec"><b>📊 Attendance Information</b></div>
+      <div class="vm-sec">⏰ Actual log-in / log-out times are sourced from the CXOne (Agent Time Card) report. Entries submitted through the Late/Early Time Form take priority, and approved disputes override previous records.</div>
+      <div class="vm-sec">📈 Attendance % = Hours Worked ÷ Hours Expected, using the same logic as the Performance → Attendance Tracker.
+        <ul class="vm-list">
+          <li>Hours Worked = Shift Length − Late Minutes − Early Leave Minutes</li>
+          <li>Time worked before the scheduled shift start or after the scheduled shift end is not counted</li>
+          <li>A 10-minute grace period applies to lateness and early logout</li>
+          <li>Called Off and NCNS count as expected hours with 0 hours worked</li>
+        </ul></div>
+      <div class="vm-sec">💡 Calendar colors indicate attendance status (Present, Late/Left Early, Called Off/NCNS, Leave, OFF, and Upcoming).</div>
+    </div>
+  </details>
 </section>
 
 <!-- ============ TEAM ROSTER (agents per supervisor) ============ -->
@@ -1003,10 +1025,19 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
     <input type="text" id="trackerSearch" placeholder="🔍 Search Agent..." onkeyup="buildTracker()">
     <button type="button" class="blue" id="trackerDownloadBtn" onclick="downloadTracker()">⬇ Download CSV</button>
   </div>
-  <div class="trk-legend" id="trackerLegend"></div>
+  <div class="trk-info" id="trackerLegend"></div>
   <div id="trackerBody"></div>
-  <details class="view-more"><summary>ℹ️ How attendance is counted</summary>
-    <div class="view-hint">✔ Present is shown once the shift has finished.<br>◐ Late / left early is counted by hours worked; it is marked * when no actual time is submitted yet and a half shift is assumed.<br>The Shift column shows each agent's usual shift in EST (🔁 = it changes during the month; hover for the breakdown).</div>
+  <details class="view-more"><summary>ℹ️ How attendance is calculated</summary>
+    <div class="view-hint">
+      <div class="vm-sec"><b>📊 Attendance Information</b></div>
+      <div class="vm-sec">⏰ Actual log-in / log-out times are sourced from the LOLI Actual sheet. 📝 Late/Early Time Form submissions take priority, and ✅ approved disputes override previous records.</div>
+      <div class="vm-sec">📈 Attendance % = Hours Worked ÷ Hours Expected, using the same rules as the Performance → Attendance Tracker.</div>
+      <div class="vm-sec">⏱️ Hours Worked = Shift Length − Minutes Late − Minutes Left Early, based on actual log-in/log-out times.</div>
+      <div class="vm-sec">🚫 Leave, OFF, and Upcoming days are excluded from the Attendance % calculation.</div>
+      <div class="vm-sec">❌ Called Off and NCNS count as expected hours with 0 hours worked.</div>
+      <div class="vm-sec">📅 Calendar colors indicate each day's attendance status.</div>
+      <div class="vm-sec">💡 Hover over a day to view the scheduled shift and actual log-in/log-out details.</div>
+    </div>
   </details>
 </section>
 
@@ -3399,10 +3430,8 @@ function attendanceFor(r, date, today, idx) {
     x.inTime = loliClock(act.login);
     x.outTime = ended || dsp?.logout != null ? loliClock(act.logout) : '';
     x.missed = lateC + earlyC;
-    if (ended && sheet) {                                               // Total Logged-in Hours from the LOLI Actual tab
-      const lg = sheet.hours != null ? sheet.hours : sheet.short != null ? exp - sheet.short : null;
-      if (lg != null) x.loggedHrs = Math.max(0, Math.min(exp, lg));
-    }
+    /* Hours worked come from the actual log-in / log-out: shift length minus the minutes late and left early (grace applied) */
+    if (ended) x.loggedHrs = Math.max(0, exp - (lateC + earlyC) / 60);
     if (lateC || earlyC) {
       const code = lateC && earlyC ? 'L/LE' : lateC ? 'LATE' : 'LE';
       Object.assign(x, { kind: 'partial', text: lateC && earlyC ? 'Late / Left early' : lateC ? 'Late' : 'Left early', code, icon: TRACKER_STATUS.partial.icon,
@@ -3555,7 +3584,24 @@ function trackerCalendarHtml(info, today) {
 
 function buildTracker() {
   const body = $('trackerBody');
-  $('trackerLegend').innerHTML = TRACKER_LEGEND.map(([k, t]) => `<span class="trk-chip st-${k}">${t}</span>`).join('');
+  const rosterN = estData.filter(r => loliIdx.has(normName(r.Name))).length;
+  const fmtLong = d => parseYMD(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const LEG = [
+    ['present', 'Present', 'Shift completed and attendance recorded'],
+    ['upcoming', 'Upcoming', 'Scheduled shift has not been completed yet'],
+    ['partial', 'Late / Left Early', `Actual log-in/log-out is more than ${LOLI_GRACE_MIN} minutes outside the scheduled shift (* indicates an estimated half shift)`],
+    ['absent', 'Called Off / NCNS', 'Scheduled shift not worked (NCNS is automatically tagged when later LOLI Actual data exists but no attendance is recorded for the scheduled day)'],
+    ['leave', 'Leave', 'Approved leave (VL)'],
+    ['off', 'OFF', 'Scheduled day off']
+  ];
+  $('trackerLegend').innerHTML =
+    '<div class="ti-title">🎨 Attendance Status Legend</div>' +
+    LEG.map(([k, label, desc]) => `<div class="ti-row"><span class="trk-chip st-${k}">${TRACKER_STATUS[k].icon} ${label}</span><span class="ti-desc">${esc(desc)}</span></div>`).join('') +
+    '<div class="ti-title" style="margin-top:12px">📋 Data Summary</div>' +
+    `<div class="ti-sum"><span title="Log-in / log-out rows read from the LOLI Actual tab">🕘 LOLI Actual: ${loliInfo.rows} records</span>` +
+    `<span>${rosterN} of ${estData.length} agents matched</span>` +
+    (loliInfo.lastDate ? `<span>Updated through ${fmtLong(loliInfo.lastDate)}</span>` : '') + '</div>' +
+    (DISPUTE_GID ? `<div class="ti-sum"><span title="Log-in / log-out disputes from the dispute form">📝 Disputes: ${disputeInfo.rows} applied${DISPUTE_NEEDS_APPROVAL ? ` • ${disputeInfo.pending} pending approval` : ''}</span></div>` : '');
 
   const ym = $('trackerMonth').value;
   if (!ym || !estData.length) {
