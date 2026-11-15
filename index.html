@@ -3583,7 +3583,8 @@ function disputeLinkHtml(name, date, supervisor) {
   const tip = filled ? 'Open the dispute form for this day' : `Open the dispute form and enter: ${name} · shift date ${date} (EST)`;
   return `<a class="cal-dispute" href="${esc(disputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="${esc(tip)}" onclick="event.stopPropagation()">🛠 Dispute</a>`;
 }
-const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind);
+/* Only days that are below 100% attendance can be disputed (a day showing 100.0% has nothing to correct) */
+const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind) && x.exp > 0 && (x.worked / x.exp) * 100 < 99.95;
 
 function saveMyAgent() { try { localStorage.setItem(MY_AGENT_KEY, $('myAgent').value); } catch (e) {} }
 function shiftMyMonth(d) {
