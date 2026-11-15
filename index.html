@@ -828,18 +828,6 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SUMMARY ============ -->
 <section class="tab-panel" id="summaryTab" hidden>
-  <div class="panel my-att" id="myAttendance">
-    <div class="my-head">
-      <h3>👤 My attendance</h3>
-      <div class="controls" style="margin:0;display:none">
-        <button type="button" onclick="shiftMyMonth(-1)" title="Previous month">‹</button>
-        <input type="month" id="myMonth" onchange="buildMyAttendance()">
-        <button type="button" onclick="shiftMyMonth(1)" title="Next month">›</button>
-        <select id="myAgent" onchange="saveMyAgent(); buildMyAttendance()"></select>
-      </div>
-    </div>
-    <div class="my-body" id="myAttBody"></div>
-  </div>
   <div class="view-hint">📈 Team summary: attendance, quality, performance score and volumes for the months you pick.<br>Choose one or more months (or Year to date) and a supervisor.</div>
   <div class="controls">
     <div class="msel" id="sumMonthWrap">
@@ -870,7 +858,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
-  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick an agent, then tick one or more months (or Year to date); everything is calculated automatically. The agent choice is shared with "My attendance".</div>
+  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick an agent, then tick one or more months (or Year to date); everything, including My attendance, is calculated automatically.</div>
   <div class="controls">
     <select id="agSumAgent" onchange="buildAgentSummary()"><option value="">Select agent…</option></select>
     <div class="msel" id="agSumMonthWrap">
@@ -1622,7 +1610,7 @@ async function refreshAttendanceData(notify = false) {
 }
 
 const TAB_RENDERERS = {
-  summaryTab: () => { buildMyAttendance(); buildSummary(); },
+  summaryTab: () => { buildSummary(); },
   agentSumTab: buildAgentSummary,
   scheduleTab: buildScheduleView,
   rosterTab: buildRosterView,
@@ -3643,39 +3631,24 @@ function disputeLinkHtml(name, date, supervisor) {
 /* Only days that are below 100% attendance can be disputed (a day showing 100.0% has nothing to correct) */
 const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind) && x.exp > 0 && (x.worked / x.exp) * 100 < 99.95;
 
-function saveMyAgent() { try { localStorage.setItem(MY_AGENT_KEY, $('myAgent').value); } catch (e) {} }
-function shiftMyMonth(d) {
-  const [y, m] = $('myMonth').value.split('-').map(Number);
-  const t = new Date(y, m - 1 + d, 1);
-  $('myMonth').value = `${t.getFullYear()}-${pad(t.getMonth() + 1)}`;
-  buildMyAttendance();
-}
+/* "Open my calendar": the Monthly roster for the agent and the latest month ticked in the Agent summary */
 function openMyCalendar() {
-  const name = $('myAgent').value;
+  const name = $('agSumAgent').value;
   if (!name) return;
-  $('rosterMonth').value = $('myMonth').value;
+  const last = [...agSumSel].sort().pop();
+  if (last) $('rosterMonth').value = last;
   $('rosterSupervisor').value = ALL;
   showTab('rosterTab');
   history.replaceState(null, '', '#rosterTab');
   rosterPick(name);
 }
 
-function buildMyAttendance() {
-  const box = $('myAttBody'), sel = $('myAgent'), mon = $('myMonth');
-  if (!box) return;
-  if (!mon.value) mon.value = ymd(estNow()).slice(0, 7);
-  let saved = ''; try { saved = localStorage.getItem(MY_AGENT_KEY) || ''; } catch (e) {}
-  const cur = sel.value || saved;
-  const names = estData.map(r => r.Name).sort((a, b) => a.localeCompare(b));
-  sel.innerHTML = '<option value="">Select your name…</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-  sel.value = names.includes(cur) ? cur : '';
-  const r = estData.find(x => x.Name === sel.value);
-  if (!r) {
-    box.innerHTML = `<div class="my-lbl">${names.length ? 'Pick an agent in Agent summary to see their attendance for the current month here.' : 'Loading the schedule…'}</div>`;
-    return;
-  }
-  const [y, m] = mon.value.split('-').map(Number);
-  const days = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
+/* My attendance for one agent over the months ticked in the Agent summary (hours and day counts are added up) */
+function myAttendanceHtml(r, selYm, periodLabel) {
+  const days = selYm.flatMap(ym => {
+    const [y, m] = ym.split('-').map(Number);
+    return Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
+  });
   const today = ymd(estNow());
   const idx = { pto: indexRecords(ptoList), att: indexAttendance(calledOffList, attTimeList) };
   const info = days.map(d => attendanceFor(r, d, today, idx));
@@ -3685,17 +3658,19 @@ function buildMyAttendance() {
   const short = n(x => x.code === 'SH'), ncns = n(x => x.kind === 'absent' && x.code === 'NCNS');
   const cls = c.pct == null ? '' : c.pct >= 95 ? 'good' : c.pct >= 91 ? 'warn' : 'bad';
   const chip = (k, t) => `<span class="trk-chip st-${k}">${t}</span>`;
-  const label = new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  box.innerHTML = `
-    <div><div class="my-pct ${cls}">${trackerPct(c)}</div>
-      <div class="my-lbl">Attendance · ${esc(label)}<br>${c.hoursWorked.toFixed(1)} / ${c.hoursExp.toFixed(1)} hrs</div></div>
-    <div class="my-stats">
-      ${chip('present', `✔ Present: ${c.present}`)}${chip('partial', `⏰ Late: ${late}`)}${chip('partial', `↘️ Left early: ${early}`)}${chip('partial', `⏱ Short hours: ${short}`)}${chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`)}${chip('leave', `🌴 Leave: ${c.leave}`)}
-    </div>
-    <div class="my-actions">
-      <button type="button" class="my-btn" onclick="openMyCalendar()">📅 Open my calendar</button>
-      <a class="my-btn" href="${esc(disputeUrl(r.Name, '', r.Supervisor))}" target="_blank" rel="noopener" title="Dispute a wrong log-in or log-out time">🛠 Dispute a log-in / log-out</a>
-    </div>`;
+  return `<div class="panel my-att" id="myAttendance" style="margin-bottom:16px">
+    <div class="my-head"><h3>👤 My attendance</h3></div>
+    <div class="my-body">
+      <div><div class="my-pct ${cls}">${trackerPct(c)}</div>
+        <div class="my-lbl">Attendance · ${esc(periodLabel)}<br>${c.hoursWorked.toFixed(1)} / ${c.hoursExp.toFixed(1)} hrs</div></div>
+      <div class="my-stats">
+        ${chip('present', `✔ Present: ${c.present}`)}${chip('partial', `⏰ Late: ${late}`)}${chip('partial', `↘️ Left early: ${early}`)}${chip('partial', `⏱ Short hours: ${short}`)}${chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`)}${chip('leave', `🌴 Leave: ${c.leave}`)}
+      </div>
+      <div class="my-actions">
+        <button type="button" class="my-btn" onclick="openMyCalendar()">📅 Open my calendar</button>
+        <a class="my-btn" href="${esc(disputeUrl(r.Name, '', r.Supervisor))}" target="_blank" rel="noopener" title="Dispute a wrong log-in or log-out time">🛠 Dispute a log-in / log-out</a>
+      </div>
+    </div></div>`;
 }
 
 /* =====================================================================
@@ -3855,6 +3830,7 @@ function buildAgentSummary() {
 
   box.innerHTML = `
     <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(periodLabel)}</small></div></div>
+    ${(() => { const rec = estData.find(x => x.Name === a.name); return rec ? myAttendanceHtml(rec, selYm, periodLabel) : ''; })()}
     <div class="stats sum-cards" style="margin-bottom:16px">${cards}</div>
     <h3 class="sum-h">Overall Metric Scorecard</h3>
     <div class="panel"><div class="schedule-container">${scores}</div></div>
