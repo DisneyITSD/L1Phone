@@ -2181,7 +2181,13 @@ function buildTeamView() {
 /* =====================================================================
    PTO + ABSENTEEISM TABLES
    ===================================================================== */
-const RECORD_COLS = { 'Name': '👤 Agent Name', 'EST Date': '📅 Date', 'Reason': '🚦 Reason', 'Supervisor': '🧑‍💼 Supervisor' };
+const RECORD_COLS = { 'Name': '👤 Agent Name', 'EST Date': '📅 Date', 'Shift Time': '🕒 Shift Time (EST)', 'Reason': '🚦 Reason', 'Supervisor': '🧑‍💼 Supervisor' };
+/* One cell of the Leaves / Absenteeism tables; the Shift Time column (EST) is shown as AM / PM, and a blank or FALSE value as — */
+const recordCell = (r, c) => {
+  if (c !== 'Shift Time') return esc(r[c]);
+  const v = String(r[c] ?? '').trim();
+  return !v || up(v) === 'FALSE' ? '—' : esc(convertShiftRange(v));
+};
 const RECORD_VIEWS = {
   pto: { table: 'ptoTable',       list: () => ptoList,       sup: 'ptoSupervisor',       date: 'ptoDate',       search: 'ptoSearch',       empty: 'No PTO records found' },
   att: { table: 'calledOffTable', list: () => calledOffList, sup: 'calledOffSupervisor', date: 'calledOffDate', search: 'calledOffSearch', empty: 'No Called Off records found' }
@@ -2209,7 +2215,7 @@ function buildRecordTable(kind) {
     : dir * String(a[col] || '').localeCompare(String(b[col] || '')));
 
   table.tBodies[0].innerHTML = rows.map(r =>
-    '<tr>' + Object.keys(RECORD_COLS).map(c => `<td>${esc(r[c])}</td>`).join('') + '</tr>').join('');
+    '<tr>' + Object.keys(RECORD_COLS).map(c => `<td>${recordCell(r, c)}</td>`).join('') + '</tr>').join('');
 }
 
 function clearRecordDate(kind) {
