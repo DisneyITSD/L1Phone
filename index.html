@@ -3547,13 +3547,6 @@ function trackerSummary(info) {
   return c;
 }
 const trackerPct = c => c.pct == null ? '—' : c.pct.toFixed(1) + '%';
-/* Schedule adherence: on-time log-ins ÷ days worked. Separate from the attendance % (which already deducts late minutes), so a late log-in is never penalised twice.
-   Only finished days with real log-in times count: estimated half shifts, called off, leave, OFF and upcoming days are left out; a late log-in = Late or Late / Left early tag. */
-function adherence(info) {
-  const days = info.filter(x => ['present', 'partial'].includes(x.kind) && x.exp > 0 && !x.estimated);
-  const onTime = days.filter(x => !(x.code === 'LATE' || x.code === 'L/LE')).length;
-  return { onTime, days: days.length, pct: days.length ? (onTime / days.length) * 100 : null };
-}
 
 /* "120 min missed" or "330 min missed (est. half shift)" */
 const missedText = x => x.missed ? `${x.missed} min missed${x.estimated ? ' (est. half shift)' : ''}` : '';
@@ -3637,15 +3630,12 @@ function buildMyAttendance() {
   const n = f => info.filter(f).length;
   const late = n(x => x.code === 'LATE' || x.code === 'L/LE'), early = n(x => x.code === 'LE' || x.code === 'L/LE');
   const short = n(x => x.code === 'SH'), ncns = n(x => x.kind === 'absent' && x.code === 'NCNS');
-  const adh = adherence(info);
   const cls = c.pct == null ? '' : c.pct >= 95 ? 'good' : c.pct >= 91 ? 'warn' : 'bad';
   const chip = (k, t) => `<span class="trk-chip st-${k}">${t}</span>`;
   const label = new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   box.innerHTML = `
     <div><div class="my-pct ${cls}">${trackerPct(c)}</div>
       <div class="my-lbl">Attendance · ${esc(label)}<br>${c.hoursWorked.toFixed(1)} / ${c.hoursExp.toFixed(1)} hrs</div></div>
-    <div><div class="my-pct ${adh.pct == null ? '' : adh.pct >= 95 ? 'good' : adh.pct >= 85 ? 'warn' : 'bad'}" title="On-time log-ins ÷ days worked. Separate from the attendance %, so a late log-in is not counted twice.">${adh.pct == null ? '—' : adh.pct.toFixed(0) + '%'}</div>
-      <div class="my-lbl">Schedule adherence<br>${adh.onTime} / ${adh.days} on-time log-ins</div></div>
     <div class="my-stats">
       ${chip('present', `✔ Present: ${c.present}`)}${chip('partial', `⏰ Late: ${late}`)}${chip('partial', `↘️ Left early: ${early}`)}${chip('partial', `⏱ Short hours: ${short}`)}${chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`)}${chip('leave', `🌴 Leave: ${c.leave}`)}
     </div>
