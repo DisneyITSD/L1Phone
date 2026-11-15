@@ -856,10 +856,13 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
-  <div class="view-hint">👤 One agent at a glance: attendance, QA, stack ranking points and actual scores, compared with the team average.<br>Pick an agent and a month. Your choice is shared with "My attendance" and remembered on this device.</div>
+  <div class="view-hint">👤 One agent at a glance: attendance, QA, stack ranking points and every column of the Overall Metric Scorecard, compared with the team average.<br>Pick an agent, then tick one or more months (or Year to date); everything is calculated automatically. The agent choice is shared with "My attendance".</div>
   <div class="controls">
     <select id="agSumAgent" onchange="buildAgentSummary()"><option value="">Select agent…</option></select>
-    <select id="agSumMonth" onchange="buildAgentSummary()"></select>
+    <div class="msel" id="agSumMonthWrap">
+      <button type="button" id="agSumMonthBtn" class="msel-btn">Month ▾</button>
+      <div class="msel-panel" id="agSumMonthPanel" hidden></div>
+    </div>
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
   </div>
   <div id="agSumBody"></div>
@@ -3668,84 +3671,146 @@ function buildMyAttendance() {
 }
 
 /* =====================================================================
-   AGENT SUMMARY TAB: one agent's attendance, QA, stack ranking points and actual scores for a month,
-   next to the team average, plus the year-to-date trend. Reads the same data as the Summary page.
+   AGENT SUMMARY TAB: one agent's attendance, QA, stack ranking points and the whole Overall Metric Scorecard
+   for the ticked months (or Year to date), next to the team average. Several months are combined with the same
+   rules as the other pages (hours and QA audits added up, scores averaged, call / ticket counts added up).
    ===================================================================== */
+let agSumSel = new Set(), agSumSelInit = false, agSumWired = false, agSumMonths = [];
+const AGSUM_HIDE = [];     // scorecard columns to leave out of this tab, e.g. ['PTO Used']
+
+/* An average formatted the way the metric tables show that column */
+function agFmt(v, k) {
+  if (v == null) return '—';
+  if (k.kind === 'pct') return v.toFixed(2) + '%';
+  if (k.kind === 'num') return String(Number.isInteger(v) ? v : +v.toFixed(2));
+  const sec = Math.round(v);
+  return k.colons >= 2 ? `${Math.floor(sec / 3600)}:${pad(Math.floor(sec % 3600 / 60))}:${pad(sec % 60)}` : `${Math.floor(sec / 60)}:${pad(sec % 60)}`;
+}
+/* Team average of one column: the mean of every agent's (already combined) value */
+function agTeamAvg(rows, i, k) {
+  if (k.kind === 'text') return '—';
+  const nums = rows.map(r => metricVal(r[i])).filter(v => typeof v === 'number');
+  return nums.length ? agFmt(mean(nums), k) : '—';
+}
+
+function renderAgSumMonthPicker() {
+  const yms = agSumMonths, allOn = yms.length > 1 && yms.every(m => agSumSel.has(m));
+  $('agSumMonthPanel').innerHTML =
+    `<label class="ytd"><input type="checkbox" data-ytd ${allOn ? 'checked' : ''}> 📅 Year to date</label>` +
+    yms.map(m => `<label><input type="checkbox" data-m="${esc(m)}" ${agSumSel.has(m) ? 'checked' : ''}> ${esc(qaYmLabel(m))}</label>`).join('');
+  $('agSumMonthBtn').textContent = (allOn ? 'Year to date' : agSumSel.size === 1 ? qaYmLabel([...agSumSel][0]) : `${agSumSel.size} months`) + ' ▾';
+}
+function wireAgSum() {
+  if (agSumWired) return;
+  agSumWired = true;
+  $('agSumMonthBtn').addEventListener('click', e => { e.stopPropagation(); $('agSumMonthPanel').hidden = !$('agSumMonthPanel').hidden; });
+  $('agSumMonthWrap').addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => $('agSumMonthPanel').hidden = true);
+  $('agSumMonthPanel').addEventListener('change', e => {
+    const t = e.target, yms = agSumMonths;
+    if (t.dataset.ytd !== undefined) agSumSel = t.checked ? new Set(yms) : new Set([yms[yms.length - 1]]);
+    else if (t.dataset.m) {
+      t.checked ? agSumSel.add(t.dataset.m) : agSumSel.delete(t.dataset.m);
+      if (!agSumSel.size) agSumSel.add(t.dataset.m);               // always keep at least one month
+    }
+    buildAgentSummary();
+  });
+}
+
 function buildAgentSummary() {
-  const box = $('agSumBody'), sel = $('agSumAgent'), msel = $('agSumMonth');
+  const box = $('agSumBody'), sel = $('agSumAgent');
   if (!box) return;
+  wireAgSum();
   if (!estData.length) { box.innerHTML = '<div class="empty" style="--c:#6c757d">Loading data...</div>'; return; }
   const D = summaryData();
+  agSumMonths = D.yms;
   /* Agent list (shares the choice of "My attendance") */
   let saved = ''; try { saved = localStorage.getItem(MY_AGENT_KEY) || ''; } catch (e) {}
   const cur = sel.value || saved;
   const names = D.agents.map(a => a.name).sort((a, b) => a.localeCompare(b));
   sel.innerHTML = '<option value="">Select agent…</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
   sel.value = names.includes(cur) ? cur : '';
-  /* Month list: this year up to the current month; default = latest month that has scores */
-  const prevYm = msel.value;
-  msel.innerHTML = D.yms.map(ym => `<option value="${ym}">${esc(qaYmLabel(ym))}</option>`).join('');
-  if (D.yms.includes(prevYm)) msel.value = prevYm;
-  else {
+  /* Months: default = latest month that has scores */
+  if (!agSumSelInit) {
     const withScores = D.yms.filter(ym => D.agents.some(a => typeof a.m[ym].total === 'number'));
-    msel.value = (withScores.length ? withScores : D.yms).slice(-1)[0];
+    agSumSel = new Set([(withScores.length ? withScores : D.yms).slice(-1)[0]]);
+    agSumSelInit = true;
   }
-  const ym = msel.value, a = D.agents.find(x => x.name === sel.value);
+  agSumSel = new Set([...agSumSel].filter(m => D.yms.includes(m)));
+  if (!agSumSel.size) agSumSel.add(D.yms[D.yms.length - 1]);
+  renderAgSumMonthPicker();
+  const a = D.agents.find(x => x.name === sel.value);
   if (!a) { box.innerHTML = '<div class="my-lbl">Pick an agent to see their summary.</div>'; return; }
   try { localStorage.setItem(MY_AGENT_KEY, a.name); } catch (e) {}
 
-  const me = sumRoll(a, [ym]), team = sumTeam(D.agents.map(x => sumRoll(x, [ym])));
+  const selYm = D.yms.filter(m => agSumSel.has(m)), multi = selYm.length > 1;
+  const periodLabel = selYm.length === D.yms.length && multi ? 'Year to date' : multi ? `${selYm.length} months` : qaYmLabel(selYm[0]);
+  const mNames = new Set(selYm.map(sumMonthName));
+  const inSel = (r, i) => i < 0 || mNames.has(String(r[i] || '').toLowerCase().trim());
+
+  /* Cards: attendance and QA over all the ticked months, points averaged, call / ticket counts added up */
+  const me = sumRoll(a, selYm), team = sumTeam(D.agents.map(x => sumRoll(x, selYm)));
   const f1 = v => v == null ? '—' : v.toFixed(1), pc = v => v == null ? '—' : v.toFixed(1) + '%';
   const diff = (v, t, unit = '') => v == null || t == null ? '' : `${v - t >= 0 ? '▲' : '▼'} ${Math.abs(v - t).toFixed(1)}${unit} vs team`;
   const card = (title, val, band, sub, tip) => `<div class="card" style="--c:${BAND_COL[band] || '#6c757d'};cursor:default" ${tip ? `title="${esc(tip)}"` : ''}><h3>${title}</h3><div class="value">${val}</div><div class="pct">${sub}</div></div>`;
-
-  /* Rank by stack ranking TOTAL for the month */
-  const totals = D.agents.map(x => sumRoll(x, [ym]).total).filter(v => v != null).sort((p, q) => q - p);
+  const totals = D.agents.map(x => sumRoll(x, selYm).total).filter(v => v != null).sort((p, q) => q - p);
   const rank = me.total != null ? totals.findIndex(v => v <= me.total) + 1 : null;
-
+  const avgN = v => Math.round(v / (team.n || 1)).toLocaleString();
   const cards = [
     card('📅 Attendance', pc(me.pct), bandOf('att', me.pct), `${me.w.toFixed(1)} / ${me.e.toFixed(1)} hrs · team ${pc(team.pct)}<br>${diff(me.pct, team.pct, '%')}`, 'Hours worked ÷ hours expected (green 95%+, amber 91-94.9%, red below 91%)'),
-    card('✅ QA', pc(me.qa), bandOf('qa', me.qa), `${me.qn} audit${me.qn === 1 ? '' : 's'} · team ${pc(team.qa)}<br>${diff(me.qa, team.qa, '%')}`, 'Average QA score of the audits in this month (green 95%+, amber 85-94.9%)'),
-    card('🏆 Total points', f1(me.total), bandOf('total', me.total), `${rank ? `Rank ${rank} of ${totals.length} · ` : ''}team ${f1(team.total)}<br>${diff(me.total, team.total)}`, 'Performance Stack Ranking total (green 85+, amber 60-84)'),
+    card('✅ QA', pc(me.qa), bandOf('qa', me.qa), `${me.qn} audit${me.qn === 1 ? '' : 's'} · team ${pc(team.qa)}<br>${diff(me.qa, team.qa, '%')}`, 'Average QA score of all the audits in the period (green 95%+, amber 85-94.9%)'),
+    card('🏆 Total points', f1(me.total), bandOf('total', me.total), `${rank ? `Rank ${rank} of ${totals.length} · ` : ''}team ${f1(team.total)}<br>${diff(me.total, team.total)}`, 'Performance Stack Ranking total, averaged over the months (green 85+, amber 60-84)'),
     card('🎯 FCR points', f1(me.fcr), bandOf('fcr', me.fcr), `team ${f1(team.fcr)}<br>${diff(me.fcr, team.fcr)}`, 'First Contact Resolution points (green 10, amber 6-8)'),
-    card('📞 Calls handled', me.hasVol ? me.calls.toLocaleString() : '—', '', me.hasVol ? `team avg ${Math.round(team.calls / (team.n || 1)).toLocaleString()}` : 'No data', ''),
-    card('🎫 Tickets opened', me.hasVol ? me.tickets.toLocaleString() : '—', '', me.hasVol ? `team avg ${Math.round(team.tickets / (team.n || 1)).toLocaleString()}` : 'No data', ''),
-    card('⏰ Late / left early', me.late, '', `days this month`, ''),
-    card('✖ Called off / NCNS', me.abs, '', `${me.leave} leave day${me.leave === 1 ? '' : 's'}`, '')
+    card('📞 Calls handled', me.hasVol ? me.calls.toLocaleString() : '—', '', me.hasVol ? `team avg ${avgN(team.calls)}` : 'No data', 'Added up over the months'),
+    card('🎫 Tickets opened', me.hasVol ? me.tickets.toLocaleString() : '—', '', me.hasVol ? `team avg ${avgN(team.tickets)}` : 'No data', 'Added up over the months')
   ].join('');
 
-  /* Stack ranking points for the month (one row of the Performance Stack Ranking sheet) */
-  const mName = sumMonthName(ym), I = metricIdx;
-  const mRow = I.month >= 0 ? metricRows.find(r => String(r[I.month] || '').toLowerCase().trim() === mName && normName(r[I.agent]) === normName(a.name)) : null;
+  /* Performance Stack Ranking: the agent's row, and the team average row (several months are averaged per agent first) */
+  const I = metricIdx;
+  const mRows = metricRows.filter(r => inSel(r, I.month));
+  const mData = multi ? metricAggregate(mRows) : mRows;
+  const mMe = mData.find(r => normName(r[I.agent]) === normName(a.name));
   const stackCols = METRIC_SHOW.map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0 && i !== I.agent && i !== I.sup);
-  const stack = mRow ? `<table class="nosort"><thead><tr>${stackCols.map(i => `<th>${esc(metricHeads[i])}${/^\d+(\.\d+)?%$/.test(metricWeights[i] || '') ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`).join('')}</tr></thead><tbody><tr>${stackCols.map(i => {
-    const v = mRow[i], num = metricVal(v), bd = metricBand(i);
+  const stackCell = (r, i) => {
+    const v = r[i], num = metricVal(v), bd = metricBand(i);
     const sc = typeof num === 'number' && bd ? (num >= bd.good ? ' sc-good' : num >= bd.mid ? ' sc-mid' : ' sc-low') : '';
     return /no data/i.test(v || '') ? '<td class="nodata">No Data</td>' : `<td class="${i === I.total ? 'overall' : ''}${sc}"${bd ? ` title="${esc(bd.tip)}"` : ''}>${esc(v) || '—'}</td>`;
-  }).join('')}</tr></tbody></table>` : '<div class="my-lbl">No stack ranking data for this agent and month.</div>';
+  };
+  const stack = mMe ? `<table class="nosort"><thead><tr><th></th>${stackCols.map(i => `<th>${esc(metricHeads[i])}${/^\d+(\.\d+)?%$/.test(metricWeights[i] || '') ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`).join('')}</tr></thead><tbody>
+      <tr><td><b>${esc(a.name)}</b></td>${stackCols.map(i => stackCell(mMe, i)).join('')}</tr>
+      <tr><td>Team average</td>${stackCols.map(i => `<td>${agTeamAvg(mData, i, metricColKind(i))}</td>`).join('')}</tr></tbody></table>`
+    : '<div class="my-lbl">No stack ranking data for this agent in the selected period.</div>';
 
-  /* Actual scores for the month (one row of the Overall Metric Scorecard sheet) */
-  const cRow = mcsI.month >= 0 ? mcsRows.find(r => String(r[mcsI.month] || '').toLowerCase().trim() === mName && normName(r[mcsI.agent]) === normName(a.name)) : null;
-  const scoreCols = mcsCols.filter(i => i !== mcsI.agent && i !== mcsI.sup);
-  const scores = cRow ? `<table class="nosort"><thead><tr>${scoreCols.map(i => `<th>${esc(mcsHeads[i])}</th>`).join('')}</tr></thead><tbody><tr>${scoreCols.map(i => /no data/i.test(cRow[i] || '') ? '<td class="nodata">No Data</td>' : `<td>${esc(cRow[i]) || '—'}</td>`).join('')}</tr></tbody></table>` : '<div class="my-lbl">No actual scores for this agent and month.</div>';
+  /* Overall Metric Scorecard: every column of the sheet, with the team average */
+  const cI = mcsI;
+  const cRows = mcsRows.filter(r => inSel(r, cI.month));
+  const cData = multi ? mcsAggregate(cRows) : cRows;
+  const cMe = cData.find(r => normName(r[cI.agent]) === normName(a.name));
+  const hide = new Set(AGSUM_HIDE.map(mcsKey));
+  const scoreCols = mcsHeads.map((h, i) => i).filter(i => i !== cI.month && i !== cI.agent && i !== cI.sup && mcsHeads[i] && !hide.has(mcsKey(mcsHeads[i])));
+  const scoreKind = i => { const k = metricColKind(i, mcsRows); return k.kind === 'text' && mcsIsSum(mcsHeads[i]) ? { kind: 'num' } : k; };
+  const scores = cMe ? `<table class="nosort"><thead><tr><th>Metric</th><th>${esc(a.name)}</th><th>Team average</th></tr></thead><tbody>${scoreCols.map(i => {
+    const v = cMe[i];
+    return `<tr><td>${esc(mcsHeads[i])}${mcsIsSum(mcsHeads[i]) && multi ? ' <small title="Added up over the months">(total)</small>' : ''}</td>${/no data/i.test(v || '') ? '<td class="nodata">No Data</td>' : `<td><b>${esc(v) || '—'}</b></td>`}<td>${agTeamAvg(cData, i, scoreKind(i))}</td></tr>`;
+  }).join('')}</tbody></table>` : '<div class="my-lbl">No Overall Metric Scorecard data for this agent in the selected period.</div>';
 
-  /* Year-to-date trend, month by month */
+  /* Month by month this year (the ticked months are bold) */
   const band = (k, v, txt) => `<td class="${v == null ? '' : 'sc-' + bandOf(k, v)}">${txt}</td>`;
   const trend = D.yms.map(m => {
     const r = sumRoll(a, [m]);
-    return `<tr${m === ym ? ' style="font-weight:700"' : ''}><td>${esc(qaYmLabel(m))}</td>${band('att', r.pct, pc(r.pct))}${band('qa', r.qa, pc(r.qa))}${band('total', r.total, f1(r.total))}${band('fcr', r.fcr, f1(r.fcr))}<td>${r.hasVol ? r.calls.toLocaleString() : '—'}</td><td>${r.late}</td><td>${r.abs}</td></tr>`;
+    return `<tr${agSumSel.has(m) ? ' style="font-weight:700"' : ''}><td>${esc(qaYmLabel(m))}</td>${band('att', r.pct, pc(r.pct))}${band('qa', r.qa, pc(r.qa))}${band('total', r.total, f1(r.total))}${band('fcr', r.fcr, f1(r.fcr))}<td>${r.hasVol ? r.calls.toLocaleString() : '—'}</td></tr>`;
   }).join('');
 
   box.innerHTML = `
-    <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(qaYmLabel(ym))}</small></div></div>
+    <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(periodLabel)}</small></div></div>
     <div class="stats sum-cards" style="margin-bottom:16px">${cards}</div>
     <h3 class="sum-h">Performance stack ranking points</h3>
     <div class="panel"><div class="schedule-container">${stack}</div></div>
-    <h3 class="sum-h" style="margin-top:16px">Actual scores</h3>
+    <h3 class="sum-h" style="margin-top:16px">Overall Metric Scorecard</h3>
     <div class="panel"><div class="schedule-container">${scores}</div></div>
     <h3 class="sum-h" style="margin-top:16px">Month by month this year</h3>
-    <div class="panel"><div class="schedule-container"><table class="nosort"><thead><tr><th>Month</th><th>Attendance</th><th>QA</th><th>Total pts</th><th>FCR pts</th><th>Calls</th><th>Late / LE days</th><th>Called off days</th></tr></thead><tbody>${trend}</tbody></table></div></div>
-    <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span><span class="trk-chip info">Team = average of all agents for the month</span></div>`;
+    <div class="panel"><div class="schedule-container"><table class="nosort"><thead><tr><th>Month</th><th>Attendance</th><th>QA</th><th>Total pts</th><th>FCR pts</th><th>Calls</th></tr></thead><tbody>${trend}</tbody></table></div></div>
+    <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span><span class="trk-chip info">Team = average of all agents for the selected period</span></div>`;
 }
 
 const trackerTip = x => [x.shift && !isOff(x.shift) ? `Shift: ${convertShiftRange(x.shift)} EST` : '', actualTip(x)].filter(Boolean).join('\n');
