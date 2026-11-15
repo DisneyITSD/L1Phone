@@ -241,6 +241,19 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 .view-more .view-hint{margin:8px 0 0}
 .view-more .vm-sec{margin:0 0 8px}
 .view-more .vm-list{margin:4px 0 0;padding-left:22px}
+.my-att{margin:0 0 16px}
+.my-att .my-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:12px}
+.my-att .my-head h3{margin:0;flex:1 1 auto}
+.my-att .my-body{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center}
+.my-pct{font-size:42px;font-weight:800;line-height:1}
+.my-pct.good{color:#16a34a}.my-pct.warn{color:#d97706}.my-pct.bad{color:#dc2626}
+.my-lbl{font-size:12.5px;color:var(--gray);line-height:1.5;margin-top:4px}
+.my-stats{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 320px}
+.my-actions{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
+.my-actions .my-btn{display:inline-block;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer}
+.my-actions .my-btn:hover{border-color:#0d6efd;color:#0d6efd}
+.cal-dispute{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;color:#2563eb;text-decoration:none}
+.cal-dispute:hover{text-decoration:underline}
 .cal-note.cal-pct{opacity:1;font-weight:700;background:none}
 .cal-note.cal-pct.st-present{color:#2e7d32}
 .cal-note.cal-pct.st-partial{color:#e65100}
@@ -791,6 +804,18 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <!-- ============ SUMMARY ============ -->
 <section class="tab-panel" id="summaryTab" hidden>
+  <div class="panel my-att" id="myAttendance">
+    <div class="my-head">
+      <h3>👤 My attendance</h3>
+      <div class="controls" style="margin:0">
+        <button type="button" onclick="shiftMyMonth(-1)" title="Previous month">‹</button>
+        <input type="month" id="myMonth" onchange="buildMyAttendance()">
+        <button type="button" onclick="shiftMyMonth(1)" title="Next month">›</button>
+        <select id="myAgent" onchange="saveMyAgent(); buildMyAttendance()"></select>
+      </div>
+    </div>
+    <div class="my-body" id="myAttBody"></div>
+  </div>
   <div class="view-hint">📈 Team summary: attendance, quality, performance score and volumes for the months you pick.<br>Choose one or more months (or Year to date) and a supervisor.</div>
   <div class="controls">
     <div class="msel" id="sumMonthWrap">
@@ -1188,6 +1213,10 @@ const ATT_TYPES = [
   { keys: ['LEFT EARLY'], icon: '↘️', color: '#9c27b0', label: 'Left Early', code: 'LE', partial: true }
 ];
 const PTO_OTHER = { code: 'PTO', icon: '🏖️', color: '#17a2b8' };
+/* Maternity / leave-of-absence reasons are not shown on the dashboard: they are replaced with a generic "Leave" as soon as the PTO sheet is read,
+   so every view (Leaves tab, dashboard, calendars, attendance) shows the same neutral label and the 🤱 icon never appears */
+const HIDDEN_LEAVE_KEYS = PTO_TYPES.find(t => t.code === 'ML').keys;
+const maskLeaveReason = r => HIDDEN_LEAVE_KEYS.some(k => up(r.Reason).includes(k)) ? { ...r, Reason: 'Leave' } : r;
 const ATT_OTHER = { code: 'CO', icon: '🚫', color: '#dc3545', label: 'Called Off' };
 
 /* =====================================================================
@@ -1434,6 +1463,7 @@ async function loadAttendance() {
       fetchCSV(URLS.loli, { raw: true }).catch(e => { loliInfo.error = e.message; return []; }),
       DISPUTE_GID ? fetchCSV(sheetUrl(DISPUTE_GID), { raw: true }).catch(e => { disputeInfo.error = e.message; return []; }) : Promise.resolve([])
     ]);
+    ptoList = ptoList.map(maskLeaveReason);
     disputeIdx = buildDisputeIndex(disputeRows);
     loadErrors.dispute = disputeInfo.error ? `Couldn't load the dispute form responses (${disputeInfo.error}) - check DISPUTE_GID and sharing`
                        : disputeInfo.noStatus ? 'Disputes need approval but the response tab has no "Approval Status" column - add it next to the form columns' : '';
@@ -1554,7 +1584,7 @@ async function refreshAttendanceData(notify = false) {
 }
 
 const TAB_RENDERERS = {
-  summaryTab: buildSummary,
+  summaryTab: () => { buildMyAttendance(); buildSummary(); },
   scheduleTab: buildScheduleView,
   rosterTab: buildRosterView,
   teamTab: buildTeamView,
@@ -2011,7 +2041,8 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
       ${a.missed ? `<div class="cal-note">${esc(missedText(a))}</div>` : ''}
       ${a.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(a.loggedHrs)} hrs logged${a.gapMin ? ` · ${fmtHrs(a.gapMin / 60)} logged out` : ''}</div>` : ''}${dayPctHtml(a)}
       ${c.shiftChg ? `<div class="cal-note">Was ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)}</div>` : ''}
-      ${c.supChg ? `<div class="cal-note">Supervisor: ${esc(c.sup)}</div>` : ''}</div>`;
+      ${c.supChg ? `<div class="cal-note">Supervisor: ${esc(c.sup)}</div>` : ''}
+      ${canDispute(a) ? disputeLinkHtml(r.Name, c.estDate || c.date, c.sup || r.Supervisor) : ''}</div>`;
   }).join('');
   const sm = trackerSummary(est), nowD = ymd(estNow());
   const tile = (label, v, dur, cls) => {
@@ -3529,6 +3560,86 @@ const dayPctHtml = x => {
   return `<div class="cal-note cal-pct ${band}" title="Hours worked ÷ hours expected for this day">📊 ${x.estimated ? '~' : ''}${pct.toFixed(1)}% attendance</div>`;
 };
 
+/* =====================================================================
+   MY ATTENDANCE (landing page) + DISPUTE THIS DAY
+   ===================================================================== */
+const MY_AGENT_KEY = 'ditsc_my_agent';          // the agent's choice is remembered on this device only
+const DISPUTE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeOJQdLCQ_J3s3BkxfyMYpLzJrx3krf24jFzWXZUwxF0RCSUQ/viewform';
+/* Optional: to open the form with the supervisor, agent and shift date already filled in, paste the form's field numbers here.
+   Get them from the form: ⋮ menu › Get pre-filled link › fill each field with any value › Get link, then copy the entry.123456789 part of each field.
+   These are already set for the current dispute form; update them only if the form is rebuilt. Left empty, the form opens blank. */
+const DISPUTE_ENTRY = { supervisor: 'entry.536377937', agent: 'entry.699153341', date: 'entry.28227940' };
+
+function disputeUrl(name, date, supervisor) {
+  const q = [];
+  if (DISPUTE_ENTRY.supervisor && supervisor) q.push(`${DISPUTE_ENTRY.supervisor}=${encodeURIComponent(supervisor)}`);
+  if (DISPUTE_ENTRY.agent && name) q.push(`${DISPUTE_ENTRY.agent}=${encodeURIComponent(name)}`);
+  if (DISPUTE_ENTRY.date && date) q.push(`${DISPUTE_ENTRY.date}=${encodeURIComponent(date)}`);     // yyyy-mm-dd
+  return DISPUTE_FORM_URL + (q.length ? '?usp=pp_url&' + q.join('&') : '');
+}
+/* The link shown on a finished calendar day; date is the shift start date in EST */
+function disputeLinkHtml(name, date, supervisor) {
+  const filled = DISPUTE_ENTRY.agent && DISPUTE_ENTRY.date;
+  const tip = filled ? 'Open the dispute form for this day' : `Open the dispute form and enter: ${name} · shift date ${date} (EST)`;
+  return `<a class="cal-dispute" href="${esc(disputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="${esc(tip)}" onclick="event.stopPropagation()">🛠 Dispute</a>`;
+}
+const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind);
+
+function saveMyAgent() { try { localStorage.setItem(MY_AGENT_KEY, $('myAgent').value); } catch (e) {} }
+function shiftMyMonth(d) {
+  const [y, m] = $('myMonth').value.split('-').map(Number);
+  const t = new Date(y, m - 1 + d, 1);
+  $('myMonth').value = `${t.getFullYear()}-${pad(t.getMonth() + 1)}`;
+  buildMyAttendance();
+}
+function openMyCalendar() {
+  const name = $('myAgent').value;
+  if (!name) return;
+  $('rosterMonth').value = $('myMonth').value;
+  $('rosterSupervisor').value = ALL;
+  showTab('rosterTab');
+  history.replaceState(null, '', '#rosterTab');
+  rosterPick(name);
+}
+
+function buildMyAttendance() {
+  const box = $('myAttBody'), sel = $('myAgent'), mon = $('myMonth');
+  if (!box) return;
+  if (!mon.value) mon.value = ymd(estNow()).slice(0, 7);
+  let saved = ''; try { saved = localStorage.getItem(MY_AGENT_KEY) || ''; } catch (e) {}
+  const cur = sel.value || saved;
+  const names = estData.map(r => r.Name).sort((a, b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">Select your name…</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  sel.value = names.includes(cur) ? cur : '';
+  const r = estData.find(x => x.Name === sel.value);
+  if (!r) {
+    box.innerHTML = `<div class="my-lbl">${names.length ? 'Pick your name to see your attendance for the month. Your choice is remembered on this device.' : 'Loading the schedule…'}</div>`;
+    return;
+  }
+  const [y, m] = mon.value.split('-').map(Number);
+  const days = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
+  const today = ymd(estNow());
+  const idx = { pto: indexRecords(ptoList), att: indexAttendance(calledOffList, attTimeList) };
+  const info = days.map(d => attendanceFor(r, d, today, idx));
+  const c = trackerSummary(info);
+  const n = f => info.filter(f).length;
+  const late = n(x => x.code === 'LATE' || x.code === 'L/LE'), early = n(x => x.code === 'LE' || x.code === 'L/LE');
+  const short = n(x => x.code === 'SH'), ncns = n(x => x.kind === 'absent' && x.code === 'NCNS');
+  const cls = c.pct == null ? '' : c.pct >= 95 ? 'good' : c.pct >= 91 ? 'warn' : 'bad';
+  const chip = (k, t) => `<span class="trk-chip st-${k}">${t}</span>`;
+  const label = new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  box.innerHTML = `
+    <div><div class="my-pct ${cls}">${trackerPct(c)}</div>
+      <div class="my-lbl">Attendance · ${esc(label)}<br>${c.hoursWorked.toFixed(1)} / ${c.hoursExp.toFixed(1)} hrs</div></div>
+    <div class="my-stats">
+      ${chip('present', `✔ Present: ${c.present}`)}${chip('partial', `⏰ Late: ${late}`)}${chip('partial', `↘️ Left early: ${early}`)}${chip('partial', `⏱ Short hours: ${short}`)}${chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`)}${chip('leave', `🌴 Leave: ${c.leave}`)}
+    </div>
+    <div class="my-actions">
+      <button type="button" class="my-btn" onclick="openMyCalendar()">📅 Open my calendar</button>
+      <a class="my-btn" href="${esc(disputeUrl(r.Name, '', r.Supervisor))}" target="_blank" rel="noopener" title="Dispute a wrong log-in or log-out time">🛠 Dispute a log-in / log-out</a>
+    </div>`;
+}
+
 const trackerTip = x => [x.shift && !isOff(x.shift) ? `Shift: ${convertShiftRange(x.shift)} EST` : '', actualTip(x)].filter(Boolean).join('\n');
 
 function trackerHeaderHtml(r, info) {
@@ -3606,7 +3717,7 @@ function trackerGridHtml(rows, monthOf, days, today) {
     <tbody>${body}</tbody></table></div></div>`;
 }
 
-function trackerCalendarHtml(info, today) {
+function trackerCalendarHtml(info, today, agent) {
   const lead = (parseYMD(info[0].date).getDay() + 6) % 7;
   const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('');
   const cells = info.map(x => {
@@ -3617,7 +3728,7 @@ function trackerCalendarHtml(info, today) {
     return `<div class="cal-day st-${x.kind}${x.date === today ? ' is-today' : ''}" title="${esc(trackerTip(x))}">
       <div class="cal-num">${parseYMD(x.date).getDate()}</div>
       <div class="cal-status">${x.icon} ${esc(showText)}</div>
-      ${x.shift ? `<div class="cal-shift">${convertShiftRange(x.shift)}</div>` : ''}${note}${x.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(x.loggedHrs)} hrs logged${x.gapMin ? ` · ${fmtHrs(x.gapMin / 60)} logged out` : ''}</div>` : ''}${dayPctHtml(x)}</div>`;
+      ${x.shift ? `<div class="cal-shift">${convertShiftRange(x.shift)}</div>` : ''}${note}${x.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(x.loggedHrs)} hrs logged${x.gapMin ? ` · ${fmtHrs(x.gapMin / 60)} logged out` : ''}</div>` : ''}${dayPctHtml(x)}${agent && canDispute(x) ? disputeLinkHtml(agent.Name, x.date, agent.Supervisor) : ''}</div>`;
   }).join('');
   return `<div class="panel"><div class="cal">${dows}${'<div></div>'.repeat(lead)}${cells}</div></div>`;
 }
@@ -3676,7 +3787,7 @@ function buildTracker() {
   const agent = roster.find(r => r.Name === sel.value) || roster[0];
   if (!agent) { body.innerHTML = '<div class="empty" style="--c:#6c757d">No agents found</div>'; return; }
   const info = monthOf(agent);
-  body.innerHTML = trackerHeaderHtml(agent, info) + trackerCalendarHtml(info, today);
+  body.innerHTML = trackerHeaderHtml(agent, info) + trackerCalendarHtml(info, today, agent);
 }
 
 /* Download the attendance grid as CSV (respects month, supervisor and search filters) */
