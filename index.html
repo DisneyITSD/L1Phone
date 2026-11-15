@@ -831,7 +831,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
   <div class="panel my-att" id="myAttendance">
     <div class="my-head">
       <h3>👤 My attendance</h3>
-      <div class="controls" style="margin:0">
+      <div class="controls" style="margin:0;display:none">
         <button type="button" onclick="shiftMyMonth(-1)" title="Previous month">‹</button>
         <input type="month" id="myMonth" onchange="buildMyAttendance()">
         <button type="button" onclick="shiftMyMonth(1)" title="Next month">›</button>
@@ -3671,7 +3671,7 @@ function buildMyAttendance() {
   sel.value = names.includes(cur) ? cur : '';
   const r = estData.find(x => x.Name === sel.value);
   if (!r) {
-    box.innerHTML = `<div class="my-lbl">${names.length ? 'Pick your name to see your attendance for the month. Your choice is remembered on this device.' : 'Loading the schedule…'}</div>`;
+    box.innerHTML = `<div class="my-lbl">${names.length ? 'Pick an agent in Agent summary to see their attendance for the current month here.' : 'Loading the schedule…'}</div>`;
     return;
   }
   const [y, m] = mon.value.split('-').map(Number);
