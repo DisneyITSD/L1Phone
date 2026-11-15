@@ -1224,7 +1224,7 @@ const ATT_OTHER = { code: 'CO', icon: '🚫', color: '#dc3545', label: 'Called O
    ===================================================================== */
 let estData = [], phData = [];
 let ptoList = [], calledOffList = [], announcementList = [], attTimeList = [], qaList = [];
-let disputeIdx = new Map();   // normalized agent + '|' + EST shift date -> { login, logout, reason }
+let disputeIdx = new Map();   // normalized agent + '|' + EST shift date -> { login, logout, reason, by }
 let disputeInfo = { rows: 0, pending: 0, rejected: 0, noStatus: false, error: '' };
 let loliInfo = { rows: 0, agents: 0, error: '', sample: '', workDate: false };
 let loliIdx = new Map();     // normalized agent name -> [{date, login, logout}] from the "LOLI Actual" tab
@@ -3308,14 +3308,15 @@ function buildLoliIndex(rows) {
   loliInfo.sample = rows.length ? `${rows.length} rows read; first row: ${(rows[0] || []).slice(0, 5).map(x => clean(x).slice(0, 25)).join(' | ')}` : 'the tab came back empty';
   return m;
 }
-/* Dispute form responses: Timestamp | Supervisor | Agent Name | Shift Date (EST) | Disputed Log-in Time (EST) | Disputed Log-out Time (EST) | Reason.
+/* Dispute form responses: Timestamp | Supervisor | Submitted by | Agent Name | Shift Date (EST) | Disputed Log-in Time (EST) | Disputed Log-out Time (EST) | Reason.
    Columns are found by their header words. The latest submission per agent + date wins, field by field. */
 function buildDisputeIndex(rows) {
   const m = new Map();
   const h = rows.findIndex(r => r.some(x => /agent/i.test(clean(x))) && r.some(x => /log.?in/i.test(clean(x)) || /log.?out/i.test(clean(x))));
   if (h < 0) { disputeInfo.rows = 0; return m; }
-  const f = re => rows[h].findIndex(x => re.test(clean(x)));
-  const c = { name: f(/agent/i), date: f(/date/i), login: f(/log.?in/i), logout: f(/log.?out/i), reason: f(/reason/i), status: f(/status|approv/i) };
+  const f = (re, not) => rows[h].findIndex(x => re.test(clean(x)) && !(not && not.test(clean(x))));
+  const BY = /submitted|submitter|filed/i;       // the "Submitted by" question must not be mistaken for the Agent Name / Supervisor columns
+  const c = { name: f(/agent/i, BY), date: f(/date/i), login: f(/log.?in/i), logout: f(/log.?out/i), reason: f(/reason/i), status: f(/status|approv/i), by: f(BY) };
   if (DISPUTE_NEEDS_APPROVAL && c.status < 0) disputeInfo.noStatus = true;
   if (c.name < 0 || c.date < 0) return m;
   let n = 0;
@@ -3329,10 +3330,11 @@ function buildDisputeIndex(rows) {
       const st = c.status >= 0 ? up(r[c.status]) : '';
       if (st !== 'APPROVED') { if (st === 'REJECTED' || st === 'DENIED') disputeInfo.rejected++; else disputeInfo.pending++; return; }
     }
-    const k = normName(name) + '|' + date, o = m.get(k) || { login: null, logout: null, reason: '' };
+    const k = normName(name) + '|' + date, o = m.get(k) || { login: null, logout: null, reason: '', by: '' };
     if (login != null) o.login = login;
     if (logout != null) o.logout = logout;
     if (c.reason >= 0 && clean(r[c.reason])) o.reason = clean(r[c.reason]);
+    if (c.by >= 0 && clean(r[c.by])) o.by = clean(r[c.by]);
     m.set(k, o);
     n++;
   });
@@ -3472,6 +3474,7 @@ function attendanceFor(r, date, today, idx) {
     x.inDisputed = dsp?.login != null;
     x.outDisputed = dsp?.logout != null;
     x.disputeReason = dsp?.reason || '';
+    x.disputedBy = dsp?.by || '';
     x.inTime = loliClock(act.login);
     x.outTime = ended || dsp?.logout != null ? loliClock(act.logout) : '';
     x.missed = lateC + earlyC;
@@ -3550,7 +3553,7 @@ const missedText = x => x.missed ? `${x.missed} min missed${x.estimated ? ' (est
 
 /* Hover text: only the actual log-in / log-out times (empty when there is no LOLI data for the day) */
 const fmtHrs = h => { const m = Math.round(h * 60); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
-const actualTip = x => x.autoNcns ? 'NCNS - no log-in / log-out in LOLI Actual' : x.inTime || x.outTime ? `Log-in Time: ${x.inTime || '—'}${x.inDisputed ? ' (disputed)' : ''}\nLog-out Time: ${x.outTime || '—'}${x.outDisputed ? ' (disputed)' : ''}${x.loggedHrs != null ? `\nHours logged in the shift: ${fmtHrs(x.loggedHrs)} hrs` : ''}${x.gapMin ? `\nLogged out during shift: ${fmtHrs(x.gapMin / 60)} hrs` : ''}` : '';
+const actualTip = x => x.autoNcns ? 'NCNS - no log-in / log-out in LOLI Actual' : x.inTime || x.outTime ? `Log-in Time: ${x.inTime || '—'}${x.inDisputed ? ' (disputed)' : ''}\nLog-out Time: ${x.outTime || '—'}${x.outDisputed ? ' (disputed)' : ''}${x.loggedHrs != null ? `\nHours logged in the shift: ${fmtHrs(x.loggedHrs)} hrs` : ''}${x.gapMin ? `\nLogged out during shift: ${fmtHrs(x.gapMin / 60)} hrs` : ''}${(x.inDisputed || x.outDisputed) && x.disputedBy ? `\nDisputed by: ${x.disputedBy}` : ''}${(x.inDisputed || x.outDisputed) && x.disputeReason ? `\nDispute reason: ${x.disputeReason}` : ''}` : '';
 
 /* Daily attendance % shown in the calendar cells: hours worked ÷ hours expected for that day (leave, OFF and upcoming days have none) */
 const dayPctHtml = x => {
@@ -3568,12 +3571,13 @@ const DISPUTE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeOJQdLCQ_J3s
 /* Optional: to open the form with the supervisor, agent and shift date already filled in, paste the form's field numbers here.
    Get them from the form: ⋮ menu › Get pre-filled link › fill each field with any value › Get link, then copy the entry.123456789 part of each field.
    These are already set for the current dispute form; update them only if the form is rebuilt. Left empty, the form opens blank. */
-const DISPUTE_ENTRY = { supervisor: 'entry.536377937', agent: 'entry.699153341', date: 'entry.28227940' };
+const DISPUTE_ENTRY = { supervisor: 'entry.536377937', agent: 'entry.699153341', date: 'entry.28227940', submittedBy: 'entry.1856424629' };
 
-function disputeUrl(name, date, supervisor) {
+function disputeUrl(name, date, supervisor, by = name) {
   const q = [];
   if (DISPUTE_ENTRY.supervisor && supervisor) q.push(`${DISPUTE_ENTRY.supervisor}=${encodeURIComponent(supervisor)}`);
   if (DISPUTE_ENTRY.agent && name) q.push(`${DISPUTE_ENTRY.agent}=${encodeURIComponent(name)}`);
+  if (DISPUTE_ENTRY.submittedBy && by) q.push(`${DISPUTE_ENTRY.submittedBy}=${encodeURIComponent(by)}`);
   if (DISPUTE_ENTRY.date && date) q.push(`${DISPUTE_ENTRY.date}=${encodeURIComponent(date)}`);     // yyyy-mm-dd
   return DISPUTE_FORM_URL + (q.length ? '?usp=pp_url&' + q.join('&') : '');
 }
