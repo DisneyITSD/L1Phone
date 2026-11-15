@@ -577,6 +577,10 @@ html[data-theme=dark] #ssStackTable tr.grp-head td:first-child,html[data-theme=d
 #ssStackTable tr.mt-month td:first-child,#ssMcsTable tr.mcs-month td:first-child{padding-left:32px;font-weight:500}
 #ssStackTable tr[class*="mo-"] td:first-child,#ssMcsTable tr[class*="mo-"] td:first-child{background:color-mix(in srgb,var(--mc) 14%,#fff);box-shadow:inset 5px 0 0 var(--mc),1px 0 0 var(--line);color:inherit}
 html[data-theme=dark] #ssStackTable tr[class*="mo-"] td:first-child,html[data-theme=dark] #ssMcsTable tr[class*="mo-"] td:first-child{background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
+#ssMcsTable tr[class*="mo-"] td:not(.kc-good):not(.kc-mid):not(.kc-low):not(.nodata){background:color-mix(in srgb,var(--mc) 14%,#fff)}
+html[data-theme=dark] #ssMcsTable tr[class*="mo-"] td:not(.kc-good):not(.kc-mid):not(.kc-low):not(.nodata){background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
+#ssStackTable tr[class*="mo-"] td:not(.nodata){background:color-mix(in srgb,var(--mc) 14%,#fff)!important}
+html[data-theme=dark] #ssStackTable tr[class*="mo-"] td:not(.nodata){background:color-mix(in srgb,var(--mc) 22%,var(--surface))!important}
 #ssStackTable{min-width:900px}
 #ssStackTable th{white-space:normal;text-align:center;vertical-align:bottom;cursor:pointer;user-select:none}
 #ssStackTable th small{display:block;font-weight:600;color:var(--blue);text-transform:none;letter-spacing:0}
