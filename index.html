@@ -572,6 +572,11 @@ td.sc-good::before,td.sc-mid::before,td.sc-low::before{content:"";display:inline
 .wl-toggle svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .wl-toggle:hover{background:rgba(127,127,127,.12)}
 .wl-toggle:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+#ssStackTable tr.grp-head td:first-child,#ssMcsTable tr.grp-head td:first-child{background:#f3f6fd;color:var(--navy);font-weight:700;text-align:left}
+html[data-theme=dark] #ssStackTable tr.grp-head td:first-child,html[data-theme=dark] #ssMcsTable tr.grp-head td:first-child{background:#18233a;color:#c7d6ff}
+#ssStackTable tr.mt-month td:first-child,#ssMcsTable tr.mcs-month td:first-child{padding-left:32px;font-weight:500}
+#ssStackTable tr[class*="mo-"] td:first-child,#ssMcsTable tr[class*="mo-"] td:first-child{background:color-mix(in srgb,var(--mc) 14%,#fff);box-shadow:inset 5px 0 0 var(--mc),1px 0 0 var(--line);color:inherit}
+html[data-theme=dark] #ssStackTable tr[class*="mo-"] td:first-child,html[data-theme=dark] #ssMcsTable tr[class*="mo-"] td:first-child{background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
 #ssStackTable{min-width:900px}
 #ssStackTable th{white-space:normal;text-align:center;vertical-align:bottom;cursor:pointer;user-select:none}
 #ssStackTable th small{display:block;font-weight:600;color:var(--blue);text-transform:none;letter-spacing:0}
@@ -2904,6 +2909,22 @@ function ssMonthMatches(label, ym) {
   return mm === m && (!yy || +yy === y);
 }
 
+/* Several months ticked: each agent is one collapsible row (the average); click it to show / hide the monthly scores */
+const ssOpen = new Set();
+let ssGroupWired = false;
+function wireSsGroups() {
+  if (ssGroupWired) return;
+  ssGroupWired = true;
+  ['ssMcsTable', 'ssStackTable'].forEach(id => $(id).addEventListener('click', e => {
+    const h = e.target.closest('tr.grp-head');
+    if (!h) return;
+    const g = h.dataset.g, k = id + ':' + g, open = !ssOpen.has(k);
+    open ? ssOpen.add(k) : ssOpen.delete(k);
+    h.classList.toggle('open', open);
+    $(id).querySelectorAll('tr[data-g]:not(.grp-head)').forEach(tr => { if (tr.dataset.g === g) tr.hidden = !open; });
+  }));
+}
+const ssMonRank = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? 0 : t; };
 let ssMcsSort = { col: -1, asc: true };
 function ssMcsSortBy(i) { ssMcsSort = { col: i, asc: ssMcsSort.col === i ? !ssMcsSort.asc : i === mcsI.agent }; buildSummary(); }
 function buildSsMcs(selYms, supBy) {
@@ -2927,14 +2948,26 @@ function buildSsMcs(selYms, supBy) {
   });
   const arrow = i => ssMcsSort.col === i ? (ssMcsSort.asc ? ' ▲' : ' ▼') : '';
   table.tHead.innerHTML = '<tr>' + mcsCols.map(i => `<th onclick="ssMcsSortBy(${i})">${esc(mcsHeads[i])}${arrow(i)}</th>`).join('') + '</tr>';
-  table.tBodies[0].innerHTML = rows.length ? rows.map(r => {
+  wireSsGroups();
+  const byAg = new Map();
+  picked.forEach(r => { const k = normName(r[I.agent]); if (!byAg.has(k)) byAg.set(k, []); byAg.get(k).push(r); });
+  const mcsCells = (r, label) => {
     const sc = supBy.get(normName(r[I.agent])) || 'Unassigned';
-    return `<tr class="${supClass(sc)}" style="${supStyle(sc)}">` + mcsCols.map(i => {
-      if (i === I.agent) return `<td>${esc(r[i])}${r._n && r._n < selYms.length ? ` <small class="mo" title="Totals / averages cover only the months this agent has data">(${r._n}/${selYms.length} mo)</small>` : ''}</td>`;
+    return mcsCols.map(i => {
+      if (i === I.agent) return `<td>${label}</td>`;
       if (/no data/i.test(r[i] || '')) return '<td class="nodata">No Data</td>';
       const b = i === I.sup ? '' : mcsBand(mcsHeads[i], r[i]);
       return `<td${b ? ` class="kc-${b}"` : ''}>${esc(i === I.sup ? sc : r[i]) || '—'}</td>`;
-    }).join('') + '</tr>';
+    }).join('');
+  };
+  table.tBodies[0].innerHTML = rows.length ? rows.map(r => {
+    const sc = supBy.get(normName(r[I.agent])) || 'Unassigned', st = supStyle(sc);
+    if (!multi) return `<tr class="${supClass(sc)}" style="${st}">` + mcsCells(r, esc(r[I.agent])) + '</tr>';
+    const g = normName(r[I.agent]), open = ssOpen.has('ssMcsTable:' + g);
+    const list = (byAg.get(g) || []).slice().sort((x, y) => ssMonRank(x[I.month]) - ssMonRank(y[I.month]));
+    const tag = r._n && r._n < selYms.length ? ` <small class="mo" title="Totals / averages cover only the months this agent has data">(${r._n}/${selYms.length} mo)</small>` : '';
+    return `<tr class="grp-head sup-row${open ? ' open' : ''}" data-g="${esc(g)}" style="${st}" title="Click to show / hide the monthly scores">` + mcsCells(r, `<span class="caret"></span>${esc(r[I.agent])}${tag}`) + '</tr>' +
+      list.map(m => `<tr class="mcs-month${moClass(m[I.month])}" data-g="${esc(g)}" style="${st}"${open ? '' : ' hidden'}>` + mcsCells(m, esc(m[I.month] || '—')) + '</tr>').join('');
   }).join('') : `<tr><td colspan="${mcsCols.length}" style="text-align:left">No agents found</td></tr>`;
 }
 
@@ -2974,11 +3007,15 @@ function buildSsStack(selYms, supBy) {
   const arrow = i => sc === i ? (col >= 0 ? (asc ? ' ▲' : ' ▼') : ' ▼') : '';
   table.tHead.innerHTML = '<tr>' + cols.map(i => `<th onclick="ssStackSortBy(${i})">${esc(metricHeads[i])}${arrow(i)}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`).join('') + '</tr>';
 
-  const cell = (r, i) => {
+  wireSsGroups();
+  const byAg = new Map();
+  picked.forEach(r => { const k = normName(r[I.agent]); if (!byAg.has(k)) byAg.set(k, []); byAg.get(k).push(r); });
+  const cell = (r, i, mode) => {
     const v = r[i], agentSup = supBy.get(normName(r[I.agent])) || 'Unassigned';
     if (i === I.agent) {
+      if (mode === 'month') return `<td>${esc(r[I.month] || '—')}</td>`;
       const rk = rankOf.get(r);
-      return `<td>${rk ? `<span class="rank">${rk}.</span> ` : ''}${esc(v)}${r._n && r._n < selYms.length ? ` <small class="mo" title="Averaged over the months this agent has data">(${r._n}/${selYms.length} mo)</small>` : ''}</td>`;
+      return `<td>${mode === 'head' ? '<span class="caret"></span>' : ''}${rk ? `<span class="rank">${rk}.</span> ` : ''}${esc(v)}${r._n && r._n < selYms.length ? ` <small class="mo" title="Averaged over the months this agent has data">(${r._n}/${selYms.length} mo)</small>` : ''}</td>`;
     }
     if (i === I.sup) return `<td>${esc(agentSup)}</td>`;
     if (/no data/i.test(v)) return '<td class="nodata">No Data</td>';
@@ -2990,8 +3027,12 @@ function buildSsStack(selYms, supBy) {
     return `<td class="${i === I.total ? 'overall' : ''}${cls}"${bd ? ` title="${esc(bd.tip)}"` : ''}>${esc(v) || '—'}</td>`;
   };
   table.tBodies[0].innerHTML = rows.length ? rows.map(r => {
-    const sp = supBy.get(normName(r[I.agent])) || 'Unassigned';
-    return `<tr class="${supClass(sp)}" style="${supStyle(sp)}">` + cols.map(i => cell(r, i)).join('') + '</tr>';
+    const sp = supBy.get(normName(r[I.agent])) || 'Unassigned', st = supStyle(sp);
+    if (!multi) return `<tr class="${supClass(sp)}" style="${st}">` + cols.map(i => cell(r, i)).join('') + '</tr>';
+    const g = normName(r[I.agent]), open = ssOpen.has('ssStackTable:' + g);
+    const list = (byAg.get(g) || []).slice().sort((x, y) => ssMonRank(x[I.month]) - ssMonRank(y[I.month]));
+    return `<tr class="grp-head mt-agent sup-row${open ? ' open' : ''}" data-g="${esc(g)}" style="${st}" title="Click to show / hide the monthly scores">` + cols.map(i => cell(r, i, 'head')).join('') + '</tr>' +
+      list.map(m => `<tr class="mt-month${moClass(m[I.month])}" data-g="${esc(g)}" style="${st}"${open ? '' : ' hidden'}>` + cols.map(i => cell(m, i, 'month')).join('') + '</tr>').join('');
   }).join('') : `<tr><td colspan="${cols.length}" style="text-align:left">No agents found</td></tr>`;
 }
 
