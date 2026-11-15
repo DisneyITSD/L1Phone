@@ -305,9 +305,8 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #agSumMcs td,#agSumStack td{text-align:center;white-space:nowrap}
 #agSumMcs td:first-child,#agSumStack td:first-child{text-align:left;font-weight:600}
 #agSumBody tr.agsum-total td{background:#eef6ff;font-weight:700}
-#agSumBody tr.agsum-team td{background:#f3f6fb;font-weight:600;color:var(--muted,#64748b)}
 html[data-theme=dark] #agSumBody tr.agsum-total td{background:#1b2a44}
-html[data-theme=dark] #agSumBody tr.agsum-team td{background:#1b2331}
+#agSumBody .schedule-container{height:auto;max-height:none;overflow-x:auto;overflow-y:visible}
 #agSumBody td.nodata{background:#4a4a4a;color:#fff;font-weight:600}
 #agSumBody td.overall{font-weight:700}
 #agSumBody td.sc-good{background:#e8f5e9;color:#2e7d32;font-weight:600}
@@ -3686,21 +3685,6 @@ let agSumSel = new Set(), agSumSelInit = false, agSumWired = false, agSumMonths 
 /* Columns of the Overall Metric Scorecard shown on this tab */
 const AGSUM_COLS = ['Calls Handled', 'Tickets Opened', 'AHT', 'QA', 'Working Rate', 'Occupancy', 'Compliance', 'Misroutes', 'FCR Count (First Contact Resolution)'];
 
-/* An average formatted the way the metric tables show that column */
-function agFmt(v, k) {
-  if (v == null) return '—';
-  if (k.kind === 'pct') return v.toFixed(2) + '%';
-  if (k.kind === 'num') return String(Number.isInteger(v) ? v : +v.toFixed(2));
-  const sec = Math.round(v);
-  return k.colons >= 2 ? `${Math.floor(sec / 3600)}:${pad(Math.floor(sec % 3600 / 60))}:${pad(sec % 60)}` : `${Math.floor(sec / 60)}:${pad(sec % 60)}`;
-}
-/* Team average of one column: the mean of every agent's (already combined) value */
-function agTeamAvg(rows, i, k) {
-  if (k.kind === 'text') return '—';
-  const nums = rows.map(r => metricVal(r[i])).filter(v => typeof v === 'number');
-  return nums.length ? agFmt(mean(nums), k) : '—';
-}
-
 function renderAgSumMonthPicker() {
   const yms = agSumMonths, allOn = yms.length > 1 && yms.every(m => agSumSel.has(m));
   $('agSumMonthPanel').innerHTML =
@@ -3781,14 +3765,12 @@ function buildAgentSummary() {
   const rankM = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? 0 : t; };
   const cRows = mcsRows.filter(r => inSel(r, cI.month));
   const myC = cRows.filter(r => normName(r[cI.agent]) === normName(a.name)).sort((p, q) => rankM(p[cI.month]) - rankM(q[cI.month]));
-  const cAll = multi ? mcsAggregate(cRows) : cRows;
-  const kindOf = i => { const k = metricColKind(i, mcsRows); return k.kind === 'text' && mcsIsSum(mcsHeads[i]) ? { kind: 'num' } : k; };
   const sCell = v => /no data/i.test(v || '') ? '<td class="nodata">No Data</td>' : `<td>${esc(v) || '—'}</td>`;
   const sRow = (label, r, cls) => `<tr class="${cls}"><td>${label}</td>${scoreCols.map(i => sCell(r[i])).join('')}</tr>`;
   const scores = myC.length && scoreCols.length ? `<table id="agSumMcs" class="nosort"><thead><tr><th>Month</th>${scoreCols.map(i => `<th>${esc(mcsHeads[i])}</th>`).join('')}</tr></thead><tbody>${
     myC.map(r => sRow(esc(r[cI.month] || '—'), r, '')).join('') +
-    (multi && myC.length > 1 ? sRow('Total / average', mcsAggregate(myC)[0], 'agsum-total') : '') +
-    `<tr class="agsum-team"><td>Team average</td>${scoreCols.map(i => `<td>${agTeamAvg(cAll, i, kindOf(i))}</td>`).join('')}</tr>`}</tbody></table>`
+    (multi && myC.length > 1 ? sRow('Total / average', mcsAggregate(myC)[0], 'agsum-total') : '')
+  }</tbody></table>`
     : '<div class="my-lbl">No Overall Metric Scorecard data for this agent in the selected period.</div>';
 
   /* Performance Stack Ranking: the agent's points for every month this year (ticked months in bold), the average of the
@@ -3797,7 +3779,6 @@ function buildAgentSummary() {
   const stackCols = METRIC_SHOW.map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0 && i !== I.agent && i !== I.sup);
   const myM = metricRows.filter(r => normName(r[I.agent]) === normName(a.name)).sort((p, q) => rankM(p[I.month]) - rankM(q[I.month]));
   const mTicked = myM.filter(r => inSel(r, I.month));
-  const mAll = multi ? metricAggregate(metricRows.filter(r => inSel(r, I.month))) : metricRows.filter(r => inSel(r, I.month));
   const stackCell = (r, i) => {
     const v = r[i], num = metricVal(v), bd = metricBand(i);
     const sc = typeof num === 'number' && bd ? (num >= bd.good ? ' sc-good' : num >= bd.mid ? ' sc-mid' : ' sc-low') : '';
@@ -3806,8 +3787,8 @@ function buildAgentSummary() {
   const stackRow = (label, r, attr) => `<tr${attr || ''}><td>${label}</td>${stackCols.map(i => stackCell(r, i)).join('')}</tr>`;
   const stack = myM.length && stackCols.length ? `<table id="agSumStack" class="nosort"><thead><tr><th>Month</th>${stackCols.map(i => `<th>${esc(metricHeads[i])}${/^\d+(\.\d+)?%$/.test(metricWeights[i] || '') ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`).join('')}</tr></thead><tbody>${
     myM.map(r => stackRow(esc(r[I.month] || '—'), r, inSel(r, I.month) ? ' style="font-weight:700"' : '')).join('') +
-    (multi && mTicked.length > 1 ? stackRow('Selected months (average)', metricAggregate(mTicked)[0]).replace('<tr>', '<tr class="agsum-total">') : '') +
-    `<tr class="agsum-team"><td>Team average</td>${stackCols.map(i => `<td>${agTeamAvg(mAll, i, metricColKind(i))}</td>`).join('')}</tr>`}</tbody></table>`
+    (multi && mTicked.length > 1 ? stackRow('Selected months (average)', metricAggregate(mTicked)[0]).replace('<tr>', '<tr class="agsum-total">') : '')
+  }</tbody></table>`
     : '<div class="my-lbl">No stack ranking data for this agent.</div>';
 
   box.innerHTML = `
