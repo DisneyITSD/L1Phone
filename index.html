@@ -787,12 +787,7 @@ html[data-theme=dark] .panel.star h3{color:#86efac}
 html[data-theme=dark] .stars li.r1{background:#33290c}
 html[data-theme=dark] .stars li strong{background:#14532d;color:#86efac}
 html[data-theme=dark] .stars li.r1 strong{background:#5b4a0c;color:#fde68a}
-/* ---------- Summary: needs attention, trend bars, coaching flags ---------- */
-.panel.warn{border-top:4px solid #dc2626;background:linear-gradient(180deg,#fff1f2,var(--surface,#fff) 110px)}
-.panel.warn h3{color:#b91c1c}
-.panel.warn .attn li strong{color:#b91c1c}
-html[data-theme=dark] .panel.warn{background:linear-gradient(180deg,#2a1417,var(--surface) 110px)}
-html[data-theme=dark] .panel.warn h3,html[data-theme=dark] .panel.warn .attn li strong{color:#fca5a5}
+/* ---------- Summary: trend bars, coaching flags ---------- */
 .bars{display:flex;align-items:flex-end;gap:6px}
 .bar-col{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
 .bar-val{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:2px}
@@ -880,9 +875,6 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
   <div class="podium" id="sumPodium"></div>
   <div class="pod-note" id="sumPodiumNote" hidden></div>
   <div class="sum-grid3" id="sumStars"></div>
-
-  <h3 class="sum-h">Needs attention</h3>
-  <div class="sum-grid3" id="sumAttention"></div>
 
   <h3 class="sum-h">Monthly trend</h3>
   <div class="sum-grid3" id="sumTrend"></div>
@@ -2848,7 +2840,7 @@ function buildSummary() {
   $('sumPodiumNote').hidden = byTotal || !top.length;
   $('sumPodiumNote').textContent = 'No Performance Stack Ranking total for these months yet, so the top 3 are ranked by QA score.';
 
-  /* 3b. Star performers: the mirror of "Needs attention" (top 5 each; ties are broken by volume) */
+  /* 3b. Star performers: top 5 each; ties are broken by volume */
   const star = (title, items, fmt, tied) => `<div class="panel star"><h3>${title}</h3><ul class="attn stars">` + (items.length
     ? items.map((a, n) => `<li class="r${n + 1}"><span><i class="rk">${medals[n] ? medals[n][0] : (n + 1) + '.'}</i>${esc(a.name)}<small>${esc(a.sup)}</small></span><strong>${fmt(a)}</strong></li>`).join('')
       + (tied > 0 ? `<li class="more">+${tied} more with the same score</li>` : '')
@@ -2865,15 +2857,6 @@ function buildSummary() {
     star('📊 Best attendance', bAt.shown, a => a.pct.toFixed(1) + '%', bAt.tied) +
     (bTot.shown.length ? star('🏆 Highest total score', bTot.shown, a => a.total.toFixed(2), bTot.tied)
                        : star('🎯 Best FCR', bFcr.shown, a => a.fcr.toFixed(2), bFcr.tied));
-
-  /* 4. Needs attention */
-  const attn = (title, items, fmt) => `<div class="panel"><h3>${title}</h3><ul class="attn">` + (items.length
-    ? items.map(a => `<li><span>${esc(a.name)}<small>${esc(a.sup)}</small></span><strong>${fmt(a)}</strong></li>`).join('')
-    : '<li class="empty" style="--c:#6c757d">Nothing to flag</li>') + '</ul></div>';
-  $('sumAttention').innerHTML =
-    attn('⭐ Lowest QA', list.filter(a => a.qa != null).sort((a, b) => a.qa - b.qa).slice(0, 5), a => a.qa.toFixed(1) + '%') +
-    attn('📊 Lowest attendance', list.filter(a => a.pct != null).sort((a, b) => a.pct - b.pct).slice(0, 5), a => a.pct.toFixed(1) + '%') +
-    attn('⏰ Most late / left early', list.filter(a => a.late > 0).sort((a, b) => b.late - a.late).slice(0, 5), a => a.late + ' day' + (a.late === 1 ? '' : 's'));
 
   /* 6. Monthly trend (every month so far this year, same supervisor filter) */
   const pts = D.yms.map(ym => ({ ym, T: sumTeam(D.agents.filter(inSup).map(a => sumRoll(a, [ym]))) }))
