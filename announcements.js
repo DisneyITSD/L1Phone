@@ -15,6 +15,13 @@
    ===================================================================== */
 const PICTURE_ANNOUNCEMENTS = [
   {
+    image:   'BackgroundNoise.jpg',
+    title:   'WFH Expectations!',
+    message: 'Background Noise and Audio Quality',
+    start:   '',
+    end:     ''
+  }
+   {
     image:   'announcements/NewL2Specialist.png',
     title:   'Congratulations to our New L2 Specialist!',
     message: 'Celebrating your advancement to Level 2.',
