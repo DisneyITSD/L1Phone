@@ -15,7 +15,7 @@
    ===================================================================== */
 const PICTURE_ANNOUNCEMENTS = [
   {
-    image:   'announcements/NewL2Specialist.jpg',
+    image:   'announcements/NewL2Specialist.png',
     title:   'Congratulations to our New L2 Specialist!',
     message: 'Celebrating your advancement to Level 2.',
     start:   '',
