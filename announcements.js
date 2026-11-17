@@ -18,7 +18,7 @@ const PICTURE_ANNOUNCEMENTS = [
     image:   'announcements/anton-level2.jpg',
     title:   'Congratulations, Anton! Welcome to RRT',
     message: 'Celebrating your advancement to Level 2.',
-    start:   '2026-11-18',
-    end:     '2026-12-18'
+    start:   '',
+    end:     '2026-12-13'
   }
 ];
