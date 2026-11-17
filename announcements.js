@@ -15,7 +15,7 @@
    ===================================================================== */
 const PICTURE_ANNOUNCEMENTS = [
   {
-    image:   'BackgroundNoise.jpg',
+    image:   'announcements/BackgroundNoise.jpg',
     title:   'WFH Expectations!',
     message: 'Background Noise and Audio Quality',
     start:   '',
