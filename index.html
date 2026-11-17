@@ -816,6 +816,24 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 #refreshBtn:disabled{cursor:progress}
 @keyframes rfSpin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#refreshBtn.spinning{animation:none}}
+/* KPI targets (Summary page) - plain text style */
+.kpi-card{margin:0 0 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.kpi-head{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;font-weight:700;font-size:14.5px;color:var(--ink)}
+.kpi-head::-webkit-details-marker{display:none}
+.kpi-chev{color:var(--muted);display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.kpi-chev::before{content:"Hide"}
+.kpi-chev::after{content:"▾";display:inline-block;font-size:14px;transition:transform .2s}
+.kpi-card:not([open]) .kpi-chev::before{content:"Show"}
+.kpi-card:not([open]) .kpi-chev::after{transform:rotate(-90deg)}
+.kpi-body{padding:0 16px 14px}
+.kpi-intro{margin:0 0 6px;color:var(--muted);font-size:13.5px}
+.kpi-list{list-style:none;margin:0;padding:0}
+.kpi-list li{padding:9px 0;border-top:1px solid var(--line)}
+.kpi-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.kpi-line b{color:var(--ink);font-size:14px}
+.kpi-goal{color:var(--blue);font-weight:700;font-size:13px}
+.kpi-text{margin-top:2px;color:var(--muted);font-size:13.5px;line-height:1.55}
+.kpi-outro{margin:8px 0 0;padding-top:9px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;font-style:italic}
 </style>
 </head>
 
@@ -867,6 +885,21 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 
 <div id="statusBanner" class="note red" hidden></div>
 <div id="highAnnouncements" class="note red" style="white-space:pre-wrap" hidden></div>
+<details class="kpi-card" id="kpiCard" hidden>
+  <summary class="kpi-head"><span>🎯 Your targets for the month</span><span class="kpi-chev" aria-hidden="true"></span></summary>
+  <div class="kpi-body">
+    <p class="kpi-intro">Here’s what we’re aiming for each month, and what each number means for you.</p>
+    <ul class="kpi-list">
+    <li><div class="kpi-line"><b>Attendance</b><span class="kpi-goal">Aim for 95% or higher</span></div><div class="kpi-text">The share of your scheduled days that you showed up. Being there on your scheduled days keeps the whole team’s day running smoothly.</div></li>
+    <li><div class="kpi-line"><b>Call and Ticket Quality</b><span class="kpi-goal">Aim for 95% or higher</span></div><div class="kpi-text">Your score from reviews of your calls and tickets. It shows how closely you’re following our quality standards.</div></li>
+    <li><div class="kpi-line"><b>FCR (First Contact Resolution)</b><span class="kpi-goal">Aim for 82% or higher</span></div><div class="kpi-text">How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.</div></li>
+    <li><div class="kpi-line"><b>Work Rate</b><span class="kpi-goal">Aim for 75% or higher</span></div><div class="kpi-text">How much of your logged-in time goes to actual work. About 25% of the day is already set aside for breaks and other activities.</div></li>
+    <li><div class="kpi-line"><b>Ticket Compliance</b><span class="kpi-goal">Aim for 100% or higher</span></div><div class="kpi-text">Create a ticket for every call you take. Your tickets should match or beat your calls, so everything is documented.</div></li>
+    <li><div class="kpi-line"><b>Misroute Rate</b><span class="kpi-goal">Aim for below 1.030%</span></div><div class="kpi-text">How often your tickets end up with the wrong team. The lower the better, so take a moment to triage each one right.</div></li>
+    </ul>
+    <p class="kpi-outro">Small habits, steady results. Keep it up! 💪</p>
+  </div>
+</details>
 <div id="dataUpdateNote" role="status" hidden></div>
 
 <!-- ============ SUMMARY ============ -->
@@ -4324,6 +4357,8 @@ const DATA_UPDATES = {
 const PAGE_ALIASES = { attendancetracker: 'trackerTab', attendance: 'trackerTab' };
 const SUMMARY_FROM = [['trackerTab','Attendance'], ['qaTab','Quality Assurance'], ['mcsTab','Metric Scorecard'], ['metricTab','Stack Ranking']];
 function renderDataUpdate(id){
+  const kpi = document.getElementById('kpiCard');   // the targets card sits above the note and only shows on the Summary page
+  if (kpi) kpi.hidden = !/^(summaryTab|scoreSumTab)$/.test(id);
   const el = document.getElementById('dataUpdateNote'); if (!el) return;
   const get = k => (sheetUpdates && sheetUpdates[k]) || DATA_UPDATES[k];
   const has = u => u && u.date;   // only the date is shown; any text in the Note column is ignored
