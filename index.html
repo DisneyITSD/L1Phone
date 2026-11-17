@@ -4321,7 +4321,7 @@ const DATA_UPDATES = {
 };
 /* The Summary page has no row of its own: it lists the notes of the pages below (add a "Summary" row in the sheet to override). */
 const PAGE_ALIASES = { attendancetracker: 'trackerTab', attendance: 'trackerTab' };
-const SUMMARY_FROM = [['qaTab','Quality Assurance'], ['mcsTab','Metric scorecard'], ['metricTab','Stack ranking'], ['trackerTab','Attendance']];
+const SUMMARY_FROM = [['trackerTab','Attendance'], ['qaTab','Quality Assurance'], ['mcsTab','Metric Scorecard'], ['metricTab','Stack Ranking']];
 function renderDataUpdate(id){
   const el = document.getElementById('dataUpdateNote'); if (!el) return;
   const get = k => (sheetUpdates && sheetUpdates[k]) || DATA_UPDATES[k];
@@ -4329,7 +4329,7 @@ function renderDataUpdate(id){
   const line = (label, u) => {
     const d = document.createElement('div');
     if (label) { const l = document.createElement('b'); l.textContent = label + ': '; d.appendChild(l); }
-    if (u.date) { const b = document.createElement('span'); b.className = 'du-date'; b.textContent = (label ? '' : 'Data last updated: ') + u.date; d.appendChild(b); }
+    if (u.date) { const b = document.createElement('span'); b.className = 'du-date'; b.textContent = (label ? '' : 'Data as of: ') + u.date; d.appendChild(b); }
     if (u.note) d.appendChild(document.createTextNode((u.date ? ' · ' : '') + u.note));
     return d;
   };
@@ -4341,7 +4341,7 @@ function renderDataUpdate(id){
   if (!lines.length) { el.hidden = true; return; }
   const ic = document.createElement('span'); ic.textContent = '🕒'; ic.setAttribute('aria-hidden','true'); el.appendChild(ic);
   const t = document.createElement('div');
-  if (!has(own)) { const h = document.createElement('div'); h.className = 'du-date'; h.textContent = 'Data last updated'; t.appendChild(h); }
+  if (!has(own)) { const h = document.createElement('div'); h.className = 'du-date'; h.textContent = 'Data as of'; t.appendChild(h); }
   lines.forEach(l => t.appendChild(l)); el.appendChild(t); el.hidden = false;
 }
 
