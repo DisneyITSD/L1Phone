@@ -4319,16 +4319,30 @@ const DATA_UPDATES = {
   mcsTab:        {date:'', note:''},
   metricTab:     {date:'', note:''},
 };
+/* The Summary page has no row of its own: it lists the notes of the pages below (add a "Summary" row in the sheet to override). */
+const PAGE_ALIASES = { attendancetracker: 'trackerTab', attendance: 'trackerTab' };
+const SUMMARY_FROM = [['qaTab','Quality Assurance'], ['mcsTab','Metric scorecard'], ['metricTab','Stack ranking'], ['trackerTab','Attendance']];
 function renderDataUpdate(id){
   const el = document.getElementById('dataUpdateNote'); if (!el) return;
-  const u = (sheetUpdates && sheetUpdates[id]) || DATA_UPDATES[id];   // the Google Sheet wins; the list above is the fallback
-  if (!u || (!u.date && !u.note)) { el.hidden = true; el.textContent = ''; return; }
+  const get = k => (sheetUpdates && sheetUpdates[k]) || DATA_UPDATES[k];
+  const has = u => u && (u.date || u.note);
+  const line = (label, u) => {
+    const d = document.createElement('div');
+    if (label) { const l = document.createElement('b'); l.textContent = label + ': '; d.appendChild(l); }
+    if (u.date) { const b = document.createElement('span'); b.className = 'du-date'; b.textContent = (label ? '' : 'Data last updated: ') + u.date; d.appendChild(b); }
+    if (u.note) d.appendChild(document.createTextNode((u.date ? ' · ' : '') + u.note));
+    return d;
+  };
+  const own = get(id), isSummary = /^(summaryTab|scoreSumTab)$/.test(id);
+  const lines = [];
+  if (has(own)) lines.push(line('', own));
+  else if (isSummary) SUMMARY_FROM.forEach(([k, label]) => { const u = get(k); if (has(u)) lines.push(line(label, u)); });
   el.textContent = '';
+  if (!lines.length) { el.hidden = true; return; }
   const ic = document.createElement('span'); ic.textContent = '🕒'; ic.setAttribute('aria-hidden','true'); el.appendChild(ic);
-  const t = document.createElement('span');
-  if (u.date) { const b = document.createElement('span'); b.className = 'du-date'; b.textContent = 'Data last updated: ' + u.date; t.appendChild(b); }
-  if (u.note) t.appendChild(document.createTextNode((u.date ? ' · ' : '') + u.note));
-  el.appendChild(t); el.hidden = false;
+  const t = document.createElement('div');
+  if (!has(own)) { const h = document.createElement('div'); h.className = 'du-date'; h.textContent = 'Data last updated'; t.appendChild(h); }
+  lines.forEach(l => t.appendChild(l)); el.appendChild(t); el.hidden = false;
 }
 
 /* Read the notes from the "Updates" tab of the Google Sheet (columns: Page | Date | Note).
@@ -4338,10 +4352,12 @@ let sheetUpdates = null;
 const normKey = v => String(v == null ? '' : v).toLowerCase().replace(/[^a-z0-9]/g, '');
 function resolveTabId(label){
   const k = normKey(label); if (!k) return null;
+  if (PAGE_ALIASES[k] && document.getElementById(PAGE_ALIASES[k])) return PAGE_ALIASES[k];
   for (const a of document.querySelectorAll('.side [data-tab]')) {
     const id = a.dataset.tab;
     if ([id, id.replace(/Tab$/, ''), a.dataset.title, a.textContent].some(n => normKey(n) === k)) return id;
   }
+  for (const pnl of document.querySelectorAll('.tab-panel')) if (normKey(pnl.id) === k || normKey(pnl.id.replace(/Tab$/, '')) === k) return pnl.id;
   return null;
 }
 async function loadDataUpdates(){
