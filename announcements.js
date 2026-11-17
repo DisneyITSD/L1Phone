@@ -15,8 +15,8 @@
    ===================================================================== */
 const PICTURE_ANNOUNCEMENTS = [
   {
-    image:   'announcements/anton-level2.jpg',
-    title:   'Congratulations, Anton! Welcome to RRT',
+    image:   'announcements/NewL2Specialist.jpg',
+    title:   'Congratulations to our New L2 Specialist!',
     message: 'Celebrating your advancement to Level 2.',
     start:   '',
     end:     '2026-12-13'
