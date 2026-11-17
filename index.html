@@ -1903,14 +1903,12 @@ function buildPictureAnnouncements() {
   const rows = pictureAnnouncements($('annScope').value === 'all');
   if (!rows.length) { $('announcementsList').innerHTML = '<div class="pa-empty">📢 No announcements right now</div>'; return; }
   $('announcementsList').innerHTML = '<div class="pa-grid">' + rows.map((a, i) => {
-    const period = (a.startD || a.endD) ? `📅 ${a.startD ? fmtDate(parseYMD(a.startD)) : '—'}${a.endD ? ' → ' + fmtDate(parseYMD(a.endD)) : ''}` : '';
     return `<div class="pa-card${a.expired ? ' pa-expired' : ''}">
       <img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy" data-src="${esc(a.image)}"
            onerror="this.outerHTML='<div class=&quot;pa-missing&quot;>Picture not found:<br>${esc(a.image)}</div>'">
       <div class="pa-body">
         <div class="pa-title">${esc(a.title)}${a.expired ? ' <span style="font-weight:400;font-size:12px;color:var(--muted)">(expired)</span>' : ''}</div>
         ${a.message ? `<div class="pa-msg">${esc(a.message)}</div>` : ''}
-        ${period ? `<div class="pa-date">${period}</div>` : ''}
       </div></div>`;
   }).join('') + '</div>';
   $('announcementsList').querySelectorAll('img[data-src]').forEach(img => img.addEventListener('click', () => openPictureBox(img.dataset.src)));
