@@ -4310,14 +4310,14 @@ window.addEventListener('DOMContentLoaded', async () => {
    DATA UPDATES: edit this block whenever you refresh the data.
    For each page, fill in the date and (optionally) a short note.
    Leave date AND note empty ('') and no banner is shown on that page.
-   This list is only the FALLBACK: rows in the Google Sheet "Updates" tab (below) override it.
+   Notes now come from the Google Sheet "Updates" tab (below). This list is left empty on purpose, so nothing shows if that tab can't load.
    ===================================================================== */
 const DATA_UPDATES = {
-  summaryTab:    {date:'Nov 17, 2026', note:'Attendance, QA, Overall Metric Scorecard and Stack Ranking refreshed.'},
+  summaryTab:    {date:'', note:''},
   agentSumTab:   {date:'', note:''},
-  qaTab:         {date:'Nov 17, 2026', note:'QA scores refreshed.'},
-  mcsTab:        {date:'Nov 17, 2026', note:'Overall Metric Scorecard refreshed.'},
-  metricTab:     {date:'Nov 17, 2026', note:'Overall Stack Ranking refreshed.'},
+  qaTab:         {date:'', note:''},
+  mcsTab:        {date:'', note:''},
+  metricTab:     {date:'', note:''},
 };
 function renderDataUpdate(id){
   const el = document.getElementById('dataUpdateNote'); if (!el) return;
