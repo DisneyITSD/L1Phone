@@ -20,7 +20,7 @@ const PICTURE_ANNOUNCEMENTS = [
     message: 'Background Noise and Audio Quality',
     start:   '',
     end:     ''
-  }
+  },
    {
     image:   'announcements/NewL2Specialist.png',
     title:   'Congratulations to our New L2 Specialist!',
