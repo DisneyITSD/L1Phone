@@ -4340,7 +4340,7 @@ const SUMMARY_FROM = [['trackerTab','Attendance'], ['qaTab','Quality Assurance']
 function renderDataUpdate(id){
   const el = document.getElementById('dataUpdateNote'); if (!el) return;
   const get = k => (sheetUpdates && sheetUpdates[k]) || DATA_UPDATES[k];
-  const has = u => u && (u.date || u.note);
+  const has = u => u && u.date;   // only the date is shown; any text in the Note column is ignored
   const mk = (tag, cls, text) => { const n = document.createElement(tag); n.className = cls; if (text) n.textContent = text; return n; };
   const own = get(id), isSummary = /^(summaryTab|scoreSumTab)$/.test(id);
   const items = [];
@@ -4353,13 +4353,11 @@ function renderDataUpdate(id){
   body.appendChild(mk('span', 'du-label', 'Data as of'));
   if (has(own)) {
     if (own.date) body.appendChild(mk('span', 'du-pill', own.date));
-    if (own.note) body.appendChild(mk('span', 'du-note', own.note));
   } else {
     const grid = mk('div', 'du-grid');
     items.forEach(([label, u]) => {
       const it = mk('div', 'du-item'); it.appendChild(mk('span', 'du-name', label));
       if (u.date) it.appendChild(mk('span', 'du-pill', u.date));
-      if (u.note) it.appendChild(mk('span', 'du-note', u.note));
       grid.appendChild(it);
     });
     body.appendChild(grid);
