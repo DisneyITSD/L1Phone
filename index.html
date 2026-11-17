@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>DITSC L1 English - Phone Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖥️</text></svg>">
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://docs.google.com" crossorigin>
+<link rel="dns-prefetch" href="https://flagcdn.com">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
 
 <style>
 /* =====================================================================
@@ -394,7 +397,7 @@ html[data-theme=dark] #mcsTable td.kc-mid,html[data-theme=dark] #agSumBody td.kc
 html[data-theme=dark] #mcsTable td.kc-low,html[data-theme=dark] #agSumBody td.kc-low{background:#3b1519!important;color:#fca5a5}
 </style>
 <script>(function(){try{var m=localStorage.getItem('ditsc_theme')||'system';document.documentElement.dataset.theme=(m==='dark'||(m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))?'dark':'light'}catch(e){}})()</script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
 <style id="theme-v2">
 /* =====================================================================
    THEME v3 - flat "report" look. Overrides the base styles above.
@@ -802,6 +805,12 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 /* agent-only layout rules */
 #supervisorSummaryCards,#dailyOverviewCards{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
 #rosterView,#rosterSupervisor,#rosterTab .daily-summary,#rosterLegend{display:none}
+/* Data "last updated" note (set in DATA_UPDATES) */
+#dataUpdateNote{display:flex;align-items:flex-start;gap:8px;margin:0 0 14px;padding:9px 13px;border:1px solid var(--line);border-left:3px solid #2563eb;border-radius:10px;font-size:13px;line-height:1.5;color:var(--muted)}
+#dataUpdateNote[hidden]{display:none}
+#dataUpdateNote b{color:inherit;font-weight:700}
+#dataUpdateNote .du-date{font-weight:700;white-space:nowrap}
+html[data-theme=dark] #dataUpdateNote{border-color:#2a3446;border-left-color:#60a5fa}
 </style>
 </head>
 
@@ -853,6 +862,7 @@ html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 
 <div id="statusBanner" class="note red" hidden></div>
 <div id="highAnnouncements" class="note red" style="white-space:pre-wrap" hidden></div>
+<div id="dataUpdateNote" role="status" hidden></div>
 
 <!-- ============ SUMMARY ============ -->
 <section class="tab-panel" id="summaryTab" hidden>
@@ -1677,15 +1687,18 @@ function loadSup() {
    CLOCK
    ===================================================================== */
 function updateClock() {
+  if (document.hidden) return;
   const now = new Date();
   const part = (tz, opts) => new Intl.DateTimeFormat('en-US', { timeZone: tz, ...opts }).format(now);
   const tzName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })
     .formatToParts(now).find(p => p.type === 'timeZoneName').value;
   const t = { hour: '2-digit', minute: '2-digit' }, d = { month: 'long', day: 'numeric', year: 'numeric' };
 
-  $('liveClock').innerHTML =
+  const html =
     `${FLAG.us}${part('America/New_York', t)} ${tzName} · ${part('America/New_York', d)}<br>` +
     `${FLAG.ph}${part('Asia/Manila', t)} PHT · ${part('Asia/Manila', d)}`;
+  const el = $('liveClock');
+  if (el._html !== html) { el._html = html; el.innerHTML = html; }
 }
 
 /* =====================================================================
@@ -4261,7 +4274,7 @@ function toast(t) {
 /* =====================================================================
    INIT
    ===================================================================== */
-window.addEventListener('load', async () => {
+window.addEventListener('DOMContentLoaded', async () => {
   initMinTarget();
   initTracker();
   initMetricMonth();
@@ -4282,8 +4295,72 @@ window.addEventListener('load', async () => {
 
   updateClock();
   setInterval(updateClock, 1000);
-  setInterval(() => refreshAttendanceData(false), REFRESH_MS);
+  let lastPoll = Date.now(), pollBusy = false;
+  const poll = async () => {
+    if (document.hidden || pollBusy) return;
+    pollBusy = true; lastPoll = Date.now();
+    try { await refreshAttendanceData(false); } finally { pollBusy = false; }
+  };
+  setInterval(poll, REFRESH_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastPoll > REFRESH_MS) poll(); });
 });
+</script>
+<script>
+/* =====================================================================
+   DATA UPDATES: edit this block whenever you refresh the data.
+   For each page, fill in the date and (optionally) a short note.
+   Leave date AND note empty ('') and no banner is shown on that page.
+   This list is only the FALLBACK: rows in the Google Sheet "Updates" tab (below) override it.
+   ===================================================================== */
+const DATA_UPDATES = {
+  summaryTab:    {date:'Nov 17, 2026', note:'Attendance, QA, Overall Metric Scorecard and Stack Ranking refreshed.'},
+  agentSumTab:   {date:'', note:''},
+  qaTab:         {date:'Nov 17, 2026', note:'QA scores refreshed.'},
+  mcsTab:        {date:'Nov 17, 2026', note:'Overall Metric Scorecard refreshed.'},
+  metricTab:     {date:'Nov 17, 2026', note:'Overall Stack Ranking refreshed.'},
+};
+function renderDataUpdate(id){
+  const el = document.getElementById('dataUpdateNote'); if (!el) return;
+  const u = (sheetUpdates && sheetUpdates[id]) || DATA_UPDATES[id];   // the Google Sheet wins; the list above is the fallback
+  if (!u || (!u.date && !u.note)) { el.hidden = true; el.textContent = ''; return; }
+  el.textContent = '';
+  const ic = document.createElement('span'); ic.textContent = '🕒'; ic.setAttribute('aria-hidden','true'); el.appendChild(ic);
+  const t = document.createElement('span');
+  if (u.date) { const b = document.createElement('span'); b.className = 'du-date'; b.textContent = 'Data last updated: ' + u.date; t.appendChild(b); }
+  if (u.note) t.appendChild(document.createTextNode((u.date ? ' · ' : '') + u.note));
+  el.appendChild(t); el.hidden = false;
+}
+
+/* Read the notes from the "Updates" tab of the Google Sheet (columns: Page | Date | Note).
+   "Page" can be the page id (qaTab) or its menu name (Quality Assurance). Refreshes every minute. */
+const UPDATES_GID = '1825800143';
+let sheetUpdates = null;
+const normKey = v => String(v == null ? '' : v).toLowerCase().replace(/[^a-z0-9]/g, '');
+function resolveTabId(label){
+  const k = normKey(label); if (!k) return null;
+  for (const a of document.querySelectorAll('.side [data-tab]')) {
+    const id = a.dataset.tab;
+    if ([id, id.replace(/Tab$/, ''), a.dataset.title, a.textContent].some(n => normKey(n) === k)) return id;
+  }
+  return null;
+}
+async function loadDataUpdates(){
+  try {
+    const res = await fetch(sheetUrl(UPDATES_GID), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = Papa.parse(await res.text(), { header: false, skipEmptyLines: 'greedy' }).data, map = {};
+    rows.forEach(r => {
+      const page = String(r[0] || '').replace(/^\uFEFF/, '').trim();
+      if (!page || /^(page|tab)$/i.test(page)) return;                 // skip blanks and the header row
+      const id = resolveTabId(page);
+      if (id) map[id] = { date: String(r[1] || '').trim(), note: String(r[2] || '').trim() };
+    });
+    sheetUpdates = map;
+  } catch (e) { console.warn('Updates tab not loaded, using the built-in notes:', e.message); }
+  try { renderDataUpdate(activeTab); } catch (e) {}
+}
+window.addEventListener('DOMContentLoaded', loadDataUpdates);
+setInterval(() => { if (!document.hidden) loadDataUpdates(); }, 60000);
 </script>
 <script>
 /* Sidebar: collapsible groups */
@@ -4312,6 +4389,7 @@ function setPageHead(id){
     $('pageCrumb').textContent = g ? g.dataset.group : '';
     if (g && g.classList.contains('nav-group')) openOnly(g);      // expand the open page's group, fold the rest
   }
+  renderDataUpdate(id);
   document.body.classList.remove('nav-open');
 }
 window.addEventListener('load', () => setPageHead(activeTab));
