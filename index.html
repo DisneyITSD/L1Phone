@@ -662,13 +662,14 @@ html[data-theme=dark] .side-toggle:hover{background:#1e2735}
 .as-pct{font-size:40px;font-weight:600;line-height:1;letter-spacing:-.02em}
 .as-lbl{margin-top:6px;font-size:13px;font-weight:500;color:var(--muted)}
 .as-sub{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.as-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .as-brk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .brk-tile{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#f6f8fc}
 .brk-tile.lunch{background:#fff7ed;border-color:#fde3c4}
 .brk-name{font-size:13px;font-weight:600;color:var(--muted)}
 .brk-main{margin-top:5px;font-size:16px;font-weight:600;line-height:1.3}
 .brk-alt{margin-top:4px;font-size:12px;color:var(--muted)}
-@media(max-width:1250px){.agent-sum{grid-template-columns:1fr 1fr}.as-brk{grid-column:1/-1;border-top:1px solid var(--line)}.agent-sum>div:nth-child(2){border-right:0}}
+@media(max-width:1250px){.agent-sum{grid-template-columns:1fr 1fr}.as-right{grid-column:1/-1;border-top:1px solid var(--line)}.agent-sum>div:nth-child(2){border-right:0}}
 @media(max-width:600px){.agent-sum{grid-template-columns:1fr}.agent-sum>div{border-right:0}.as-brk{grid-template-columns:1fr 1fr}}
 
 /* ---------- Theme switch + dark mode ---------- */
@@ -972,7 +973,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
-  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick the agent in the schedule at the top, then tick one or more months (or Year to date) beside the Overall Metric Scorecard; everything, including My attendance, is calculated automatically.</div>
+  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick the agent in the schedule at the top, then tick one or more months (or Year to date) beside the Overall Metric Scorecard; everything below is calculated automatically.</div>
   <div id="agSumSchedule">
     <h3 class="sum-h" style="margin-top:4px">📅 Schedule</h3>
     <div class="view-hint">📊 Monthly schedule for the agent picked here, built from the weekly roster plus the "Schedule By Date" tab.<br>Colours show each day's attendance. A purple outline 🔁 marks days changed from the weekly roster. Hover a day for details.</div>
@@ -2236,6 +2237,15 @@ function rosterPick(name) {
   buildRosterView();
 }
 
+/* Day counts for the month: Present, Late, Left early, Short hours, Called off (NCNS) and Leave */
+function attChipsHtml(info, c) {
+  const n = f => info.filter(f).length;
+  const late = n(x => x.code === 'LATE' || x.code === 'L/LE'), early = n(x => x.code === 'LE' || x.code === 'L/LE');
+  const short = n(x => x.code === 'SH'), ncns = n(x => x.kind === 'absent' && x.code === 'NCNS');
+  const chip = (k, t) => `<span class="trk-chip st-${k}">${t}</span>`;
+  return chip('present', `✔ Present: ${c.present}`) + chip('partial', `⏰ Late: ${late}`) + chip('partial', `↘️ Left early: ${early}`) + chip('partial', `⏱ Short hours: ${short}`) +
+         chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`) + chip('leave', `🌴 Leave: ${c.leave}`);
+}
 function rosterCalendarHtml({ r, cells, est }, today, ph) {
   const lead = (parseYMD(cells[0].date).getDay() + 6) % 7;
   const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('');
@@ -2267,7 +2277,8 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
     <div><div class="as-name">${esc(r.Name)}</div><div class="as-sup">${esc(r.Supervisor || 'Unassigned')}</div></div>
     <div><div class="as-pct" style="color:${sm.pct == null ? 'inherit' : sm.pct >= 95 ? '#16a34a' : sm.pct >= 91 ? '#d97706' : '#dc2626'}">${trackerPct(sm)}</div><div class="as-lbl">Attendance this month${ph ? ' (EST days)' : ''}</div>
       <div class="as-sub">${sm.hoursWorked.toFixed(1)} / ${sm.hoursExp.toFixed(1)} hrs · ✔ ${sm.present} · ◐ ${sm.partial} · ✖ ${sm.absent} · 🌴 ${sm.leave}${chg ? ' · 🔁 ' + chg + ' changed' : ''}</div></div>
-    <div class="as-brk">${tile('Break 1', r['Break 1'], 15, '')}${tile('Lunch', r['Lunch'], 60, 'lunch')}${tile('Break 2', r['Break 2'], 15, '')}${tile('Break 3', r['Break 3'], 15, '')}${isLact(r.Name) ? tile('Lactation Break 1', r['Lactation 1'], LACTATION_MIN, '') + tile('Lactation Break 2', r['Lactation 2'], LACTATION_MIN, '') : ''}</div>
+    <div class="as-right"><div class="as-brk">${tile('Break 1', r['Break 1'], 15, '')}${tile('Lunch', r['Lunch'], 60, 'lunch')}${tile('Break 2', r['Break 2'], 15, '')}${tile('Break 3', r['Break 3'], 15, '')}${isLact(r.Name) ? tile('Lactation Break 1', r['Lactation 1'], LACTATION_MIN, '') + tile('Lactation Break 2', r['Lactation 2'], LACTATION_MIN, '') : ''}</div>
+    <div class="as-chips">${attChipsHtml(est, sm)}</div></div>
   </div>`;
   return `${head}<div class="panel"><div class="cal">${dows}${'<div></div>'.repeat(lead)}${days}</div></div>`;
 }
@@ -4000,42 +4011,6 @@ function disputeLinkHtml(name, date, supervisor) {
 /* Only days that are below 100% attendance can be disputed (a day showing 100.0% has nothing to correct) */
 const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind) && x.exp > 0 && (x.worked / x.exp) * 100 < 99.95;
 
-/* "View my schedule": scroll to the schedule calendar further down this page */
-function openMyCalendar() {
-  const el = $('agSumSchedule');
-  if (el && !el.hidden) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-/* My attendance for one agent over the months ticked in the Agent summary (hours and day counts are added up) */
-function myAttendanceHtml(r, selYm, periodLabel) {
-  const days = selYm.flatMap(ym => {
-    const [y, m] = ym.split('-').map(Number);
-    return Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
-  });
-  const today = ymd(estNow());
-  const idx = { pto: indexRecords(ptoList), att: indexAttendance(calledOffList, attTimeList) };
-  const info = days.map(d => attendanceFor(r, d, today, idx));
-  const c = trackerSummary(info);
-  const n = f => info.filter(f).length;
-  const late = n(x => x.code === 'LATE' || x.code === 'L/LE'), early = n(x => x.code === 'LE' || x.code === 'L/LE');
-  const short = n(x => x.code === 'SH'), ncns = n(x => x.kind === 'absent' && x.code === 'NCNS');
-  const cls = c.pct == null ? '' : c.pct >= 95 ? 'good' : c.pct >= 91 ? 'warn' : 'bad';
-  const chip = (k, t) => `<span class="trk-chip st-${k}">${t}</span>`;
-  return `<div class="panel my-att" id="myAttendance" style="margin-bottom:16px">
-    <div class="my-head"><h3>👤 My attendance</h3></div>
-    <div class="my-body">
-      <div><div class="my-pct ${cls}">${trackerPct(c)}</div>
-        <div class="my-lbl">Attendance · ${esc(periodLabel)}<br>${c.hoursWorked.toFixed(1)} / ${c.hoursExp.toFixed(1)} hrs</div></div>
-      <div class="my-stats">
-        ${chip('present', `✔ Present: ${c.present}`)}${chip('partial', `⏰ Late: ${late}`)}${chip('partial', `↘️ Left early: ${early}`)}${chip('partial', `⏱ Short hours: ${short}`)}${chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`)}${chip('leave', `🌴 Leave: ${c.leave}`)}
-      </div>
-      <div class="my-actions">
-        <button type="button" class="my-btn" onclick="openMyCalendar()">📅 View my schedule</button>
-        <a class="my-btn" href="${esc(disputeUrl(r.Name, '', r.Supervisor))}" target="_blank" rel="noopener" title="Dispute a wrong log-in or log-out time">🛠 Dispute a log-in / log-out</a>
-      </div>
-    </div></div>`;
-}
-
 /* =====================================================================
    AGENT SUMMARY TAB: one agent's attendance, QA, stack ranking points and the whole Overall Metric Scorecard
    for the ticked months (or Year to date). Several months are combined with the same
@@ -4202,7 +4177,6 @@ function buildAgentSummary() {
 
   box.innerHTML = `
     <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(periodLabel)}</small></div></div>
-    ${(() => { const rec = estData.find(x => x.Name === a.name); return rec ? myAttendanceHtml(rec, selYm, periodLabel) : ''; })()}
     <div class="stats sum-cards five" style="margin-bottom:16px">${cards}</div>
     <div class="sum-h-row"><h3 class="sum-h">Overall Metric Scorecard</h3><span id="agSumMonthSlot"></span></div>
     <div class="panel"><div class="schedule-container">${scores}</div></div>
