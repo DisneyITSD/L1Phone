@@ -2276,7 +2276,7 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
   const head = `<div class="agent-sum">
     <div><div class="as-name">${esc(r.Name)}</div><div class="as-sup">${esc(r.Supervisor || 'Unassigned')}</div></div>
     <div><div class="as-pct" style="color:${sm.pct == null ? 'inherit' : sm.pct >= 95 ? '#16a34a' : sm.pct >= 91 ? '#d97706' : '#dc2626'}">${trackerPct(sm)}</div><div class="as-lbl">Attendance this month${ph ? ' (EST days)' : ''}</div>
-      <div class="as-sub">${sm.hoursWorked.toFixed(1)} / ${sm.hoursExp.toFixed(1)} hrs · ✔ ${sm.present} · ◐ ${sm.partial} · ✖ ${sm.absent} · 🌴 ${sm.leave}${chg ? ' · 🔁 ' + chg + ' changed' : ''}</div></div>
+      <div class="as-sub">${sm.hoursWorked.toFixed(1)} / ${sm.hoursExp.toFixed(1)} hrs${chg ? ' · 🔁 ' + chg + ' changed' : ''}</div></div>
     <div class="as-right"><div class="as-brk">${tile('Break 1', r['Break 1'], 15, '')}${tile('Lunch', r['Lunch'], 60, 'lunch')}${tile('Break 2', r['Break 2'], 15, '')}${tile('Break 3', r['Break 3'], 15, '')}${isLact(r.Name) ? tile('Lactation Break 1', r['Lactation 1'], LACTATION_MIN, '') + tile('Lactation Break 2', r['Lactation 2'], LACTATION_MIN, '') : ''}</div>
     <div class="as-chips">${attChipsHtml(est, sm)}</div></div>
   </div>`;
