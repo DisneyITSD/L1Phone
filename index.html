@@ -276,6 +276,12 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 .cal-num{font-weight:700;font-size:13px}
 .cal-status{font-weight:700}
 .cal-shift,.cal-note{font-size:11px;opacity:.85}
+/* Unavailable time (LBPRR sheet) inside the schedule calendar days */
+.cal-ut{display:flex;flex-direction:column;gap:1px;margin-top:3px;padding-top:3px;border-top:1px dashed rgba(127,127,127,.4);font-size:10.5px}
+.cal-ut div{display:flex;justify-content:space-between;gap:6px;white-space:nowrap}
+.cal-ut span{opacity:.85}
+.cal-ut b.ut-red{background:#fecaca;color:#7f1d1d;border-radius:3px;padding:0 3px}
+html[data-theme=dark] .cal-ut b.ut-red{background:#7f1d1d;color:#fecaca}
 
 /* ---------- Team roster ---------- */
 .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-items:start}
@@ -1314,6 +1320,10 @@ const LOLI_GID = '74611449';
 const DISPUTE_GID = '1843274746';
 /* true = a dispute only counts once the manager types "Approved" in the response tab's "Approval Status" column */
 const DISPUTE_NEEDS_APPROVAL = true;
+/* LBPRR tab: Agent Name | Shift Date | Break | Overbreak | Lunch | Overlunch | Restroom | Project (same sheet as the supervisor view).
+   Paste the number after "gid=" from the LBPRR tab's address bar here (most reliable). Empty = find the tab by its name. */
+const LBPRR_GID = '1191914646';
+const LBPRR_URL = LBPRR_GID ? sheetUrl(LBPRR_GID) : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('LBPRR')}`;
 const URLS = {
   pto: sheetUrl(1297010746),
   calledOff: sheetUrl(2139820898),
@@ -1367,6 +1377,7 @@ let ptoList = [], calledOffList = [], announcementList = [], attTimeList = [], q
 let disputeIdx = new Map();   // normalized agent + '|' + EST shift date -> { login, logout, reason, by }
 let disputeInfo = { rows: 0, pending: 0, rejected: 0, noStatus: false, error: '' };
 let loliInfo = { rows: 0, agents: 0, error: '', sample: '', workDate: false };
+let utIdx = new Map();       // normalized agent name + '|' + EST shift date -> {brk, lunch, rest, proj} from the "LBPRR" tab
 let loliIdx = new Map();     // normalized agent name -> [{date, login, logout}] from the "LOLI Actual" tab
 let dailyMap = new Map();
 let activeTab = 'scheduleTab';
@@ -1592,22 +1603,24 @@ const loadSheet = async url =>
 
 async function loadAttendance() {
   try {
-    let loliRows, disputeRows;
+    let loliRows, disputeRows, lbprrRows;
     disputeInfo = { rows: 0, pending: 0, rejected: 0, noStatus: false, error: '' };
     loliInfo = { rows: 0, agents: 0, error: '', sample: '', workDate: false };
-    [ptoList, calledOffList, announcementList, attTimeList, loliRows, disputeRows] = await Promise.all([
+    [ptoList, calledOffList, announcementList, attTimeList, loliRows, disputeRows, lbprrRows] = await Promise.all([
       loadSheet(URLS.pto),
       loadSheet(URLS.calledOff),
       fetchCSV(URLS.announcements),
       loadSheet(URLS.attTime).catch(() => []),      // if this tab fails, everything else keeps working
       fetchCSV(URLS.loli, { raw: true }).catch(e => { loliInfo.error = e.message; return []; }),
-      DISPUTE_GID ? fetchCSV(sheetUrl(DISPUTE_GID), { raw: true }).catch(e => { disputeInfo.error = e.message; return []; }) : Promise.resolve([])
+      DISPUTE_GID ? fetchCSV(sheetUrl(DISPUTE_GID), { raw: true }).catch(e => { disputeInfo.error = e.message; return []; }) : Promise.resolve([]),
+      fetchCSV(LBPRR_URL, { raw: true }).catch(() => [])     // if this tab fails, the calendar simply shows no unavailable time
     ]);
     ptoList = ptoList.map(maskLeaveReason);
     disputeIdx = buildDisputeIndex(disputeRows);
     loadErrors.dispute = disputeInfo.error ? `Couldn't load the dispute form responses (${disputeInfo.error}) - check DISPUTE_GID and sharing`
                        : disputeInfo.noStatus ? 'Disputes need approval but the response tab has no "Approval Status" column - add it next to the form columns' : '';
     loliIdx = buildLoliIndex(loliRows);
+    utIdx = buildUtIndex(lbprrRows);
     loadErrors.loli = loliInfo.error ? `Couldn't load the "LOLI Actual" tab (${loliInfo.error}) - check the tab name and sharing`
                     : !loliInfo.rows ? 'The "LOLI Actual" tab was read but no log-in rows were found (' + loliInfo.sample + ') - the tab name may not be matching; set LOLI_GID in the code' : '';
     loadErrors.attendance = '';
@@ -2248,6 +2261,7 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
       ${a.kind === 'off' ? '' : `<div class="cal-status" style="font-size:11px">${a.icon} ${esc(a.text)}</div>`}
       ${a.missed ? `<div class="cal-note">${esc(missedText(a))}</div>` : ''}
       ${a.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(a.loggedHrs)} hrs logged${a.gapMin ? ` · ${fmtHrs(a.gapMin / 60)} logged out` : ''}</div>` : ''}${dayPctHtml(a)}
+      ${utHtml(r.Name, c.estDate || c.date)}
       ${c.shiftChg ? `<div class="cal-note">Was ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)}</div>` : ''}
       ${c.supChg ? `<div class="cal-note">Supervisor: ${esc(c.sup)}</div>` : ''}
       ${canDispute(a) ? disputeLinkHtml(r.Name, c.estDate || c.date, c.sup || r.Supervisor) : ''}</div>`;
@@ -3631,6 +3645,38 @@ function parseLoliClock(v) {
   if (ap === 'A' && h === 12) h = 0;
   return h * 60 + +m[2];
 }
+/* ---------- Unavailable time (LBPRR tab) shown in the schedule calendar days ----------
+   Columns are found by their header words. Break over 0:45:00 and Lunch over 1:00:00 are highlighted red. */
+const UT_ROWS = [['brk', '☕ Break'], ['lunch', '🍽️ Lunch'], ['rest', '🚻 Restroom'], ['proj', '📁 Project']];
+const UT_BREAK_MAX = 45 * 60, UT_LUNCH_MAX = 60 * 60;
+const utSecs = s => { const m = clean(s).match(/^(\d+):(\d{2})(?::(\d{2}))?$/); return m ? +m[1] * 3600 + +m[2] * 60 + +(m[3] || 0) : null; };
+function buildUtIndex(rows) {
+  const m = new Map();
+  const h = rows.findIndex(r => r.some(x => /agent/i.test(clean(x))) && r.some(x => /date/i.test(clean(x))));
+  if (h < 0) return m;
+  const f = (re, not) => rows[h].findIndex(x => re.test(clean(x)) && !(not && not.test(clean(x))));
+  const c = { name: f(/agent/i), date: f(/date/i), brk: f(/break/i, /over/i), lunch: f(/lunch/i, /over/i), rest: f(/rest.?room/i), proj: f(/project/i) };
+  rows.slice(h + 1).forEach(r => {
+    const name = clean(r[c.name]), date = parseLoliDate(r[c.date]);
+    if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    const o = {};
+    UT_ROWS.forEach(([k]) => o[k] = c[k] >= 0 ? clean(r[c[k]]) : '');
+    const key = normName(name) + '|' + date;
+    if (!m.has(key)) m.set(key, o);
+  });
+  return m;
+}
+/* The unavailable-time lines for one calendar day (date = EST shift date); empty when the sheet has nothing for that day */
+function utHtml(name, date) {
+  const o = utIdx.get(normName(name) + '|' + date);
+  if (!o) return '';
+  const lines = UT_ROWS.filter(([k]) => o[k]).map(([k, label]) => {
+    const s = utSecs(o[k]), red = (k === 'brk' && s > UT_BREAK_MAX) || (k === 'lunch' && s > UT_LUNCH_MAX);
+    return `<div><span>${label}</span><b${red ? ' class="ut-red"' : ''}>${esc(o[k])}</b></div>`;
+  });
+  return lines.length ? `<div class="cal-ut">${lines.join('')}</div>` : '';
+}
+
 function buildLoliIndex(rows) {
   const m = new Map();
   /* Columns are found from the header row. Current layout of the tab:
