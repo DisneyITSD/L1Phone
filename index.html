@@ -885,7 +885,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
     <div class="nav-group" data-group="Schedule">
       <button type="button" class="nav-label" aria-expanded="false"><span>Schedule</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="nav-items"><div>
-        <a class="tab-btn" href="#rosterTab" data-tab="rosterTab"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg><span>Agent Schedule</span></a>
         <a class="tab-btn" href="#teamTab" data-tab="teamTab"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Team roster</span></a>
       </div></div>
     </div>
@@ -976,7 +975,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
-  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick an agent, then tick one or more months (or Year to date); everything, including My attendance, is calculated automatically.</div>
+  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick an agent, then tick one or more months (or Year to date); everything, including My attendance, is calculated automatically.<br>The agent's monthly schedule calendar is at the top of this page, the summary below it.</div>
   <div class="controls">
     <select id="agSumAgent" onchange="buildAgentSummary()"><option value="">Select agent…</option></select>
     <div class="msel" id="agSumMonthWrap">
@@ -985,7 +984,51 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
     </div>
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
   </div>
-  <div id="agSumBody"></div>
+  <div id="agSumSchedule" hidden>
+    <h3 class="sum-h" style="margin-top:4px">📅 Schedule</h3>
+    <div class="view-hint">📊 Monthly schedule for the agent picked above, built from the weekly roster plus the "Schedule By Date" tab.<br>Colours show each day's attendance. A purple outline 🔁 marks days changed from the weekly roster. Hover a day for details.</div>
+    <div class="controls">
+      <button type="button" onclick="shiftRosterMonth(-1)" title="Previous month">‹</button>
+      <input type="month" id="rosterMonth" onchange="buildRosterView()">
+      <button type="button" onclick="shiftRosterMonth(1)" title="Next month">›</button>
+      <select id="rosterTimezone" onchange="buildRosterView()"><option value="EST">EST</option><option value="PH">PH</option></select>
+    </div>
+    <div id="rosterCal"></div>
+    <div class="panel" style="margin-top:12px">
+      <h3>🔁 Schedule changes this month</h3>
+      <div class="schedule-container" style="height:auto;max-height:50vh">
+        <table id="rosterChanges" class="nosort"><thead><tr>
+          <th>👤 Agent</th><th>📅 Date</th><th>Weekly roster</th><th>Now</th><th>🧑‍💼 Supervisor</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+    <details class="view-more"><summary>ℹ️ How attendance is calculated</summary>
+    <div class="view-hint">
+      <div class="vm-sec"><b>📊 Attendance Information</b></div>
+      <div class="vm-sec">⏰ Actual log-in / log-out times are sourced from the CXOne (Agent Time Card) report. Entries submitted through the Late/Early Time Form take priority, and approved disputes override previous records.</div>
+      <div class="vm-sec">📈 Attendance % = Hours Worked ÷ Hours Expected, using the same logic as the Performance → Attendance Tracker.
+        <ul class="vm-list">
+          <li>Hours Worked = the lower of (Shift Length − Late Minutes − Early Leave Minutes) and the total logged-in hours</li>
+          <li>Only time between the scheduled shift start and end counts; time logged before the start or after the end is not counted</li>
+          <li>Every minute late or left early reduces the hours; the 10-minute grace period only decides the Late / Left Early / Short Hours tag</li>
+          <li>Logged-out time during the shift of more than 10 minutes is tagged Short Hours</li>
+          <li>Called Off and NCNS count as expected hours with 0 hours worked</li>
+        </ul></div>
+      <div class="vm-sec">💡 Calendar colors indicate attendance status (Present, Late/Left Early, Called Off/NCNS, Leave, OFF, and Upcoming).</div>
+    </div>
+  </details>
+    <div style="display:none" aria-hidden="true">
+      <select id="rosterView"><option value="calendar">Agent calendar</option><option value="grid">All agents (grid)</option></select>
+      <select id="rosterSupervisor"><option>All Supervisors</option></select>
+      <select id="rosterAgent"></select>
+      <input type="text" id="rosterSearch">
+      <input type="checkbox" id="rosterChangedOnly">
+      <span id="rosterCount"></span><span id="rosterChangeCount"></span><span id="rosterAttAvg"></span>
+      <div id="rosterLegend"></div>
+      <div id="rosterGridWrap"><table id="rosterTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+  <div id="agSumBody" style="margin-top:28px"></div>
 </section>
 
 <section class="tab-panel" id="supervisorTab" hidden>
@@ -1058,56 +1101,8 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   </div>
 </section>
 
-<!-- ============ MONTHLY ROSTER ============ -->
-<section class="tab-panel" id="rosterTab" hidden>
-  <div class="view-hint">📊 Monthly schedule per agent, built from the weekly roster plus the "Schedule By Date" tab.<br>Colours show each day's attendance (same rules as Scorecard › Attendance).<br>A purple outline 🔁 marks days changed from the weekly roster.<br>Hover a cell for details.</div>
-  <div class="controls">
-    <button type="button" onclick="shiftRosterMonth(-1)" title="Previous month">‹</button>
-    <input type="month" id="rosterMonth" onchange="buildRosterView()">
-    <button type="button" onclick="shiftRosterMonth(1)" title="Next month">›</button>
-    <select id="rosterView" onchange="buildRosterView()"><option value="calendar">Agent calendar</option><option value="grid">All agents (grid)</option></select>
-    <select id="rosterTimezone" onchange="buildRosterView()"><option value="EST">EST</option><option value="PH">PH</option></select>
-    <select id="rosterSupervisor" onchange="buildRosterView()"><option>All Supervisors</option></select>
-    <select id="rosterAgent" onchange="buildRosterView()"></select>
-    <input type="text" id="rosterSearch" placeholder="🔍 Search Agent..." onkeyup="buildRosterView()">
-    <label style="display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" id="rosterChangedOnly" style="padding:0;width:auto" onchange="buildRosterView()"> Changed only</label>
-  </div>
-  <div class="daily-summary">
-    <div class="summary-box">👤 Agents: <span id="rosterCount">0</span></div>
-    <div class="summary-box">🔁 Schedule changes: <span id="rosterChangeCount">0</span></div>
-    <div class="summary-box">📊 Attendance: <span id="rosterAttAvg">—</span></div>
-  </div>
-  <div class="trk-legend" id="rosterLegend"></div>
-  <div id="rosterCal"></div>
-  <div class="panel" id="rosterGridWrap">
-    <div class="schedule-container">
-      <table id="rosterTable" class="nosort trk-grid"><thead></thead><tbody></tbody></table>
-    </div>
-  </div>
-  <div class="panel" style="margin-top:12px">
-    <h3>🔁 Schedule changes this month</h3>
-    <div class="schedule-container" style="height:auto;max-height:50vh">
-      <table id="rosterChanges" class="nosort"><thead><tr>
-        <th>👤 Agent</th><th>📅 Date</th><th>Weekly roster</th><th>Now</th><th>🧑‍💼 Supervisor</th>
-      </tr></thead><tbody></tbody></table>
-    </div>
-  </div>
-  <details class="view-more"><summary>ℹ️ How attendance is calculated</summary>
-    <div class="view-hint">
-      <div class="vm-sec"><b>📊 Attendance Information</b></div>
-      <div class="vm-sec">⏰ Actual log-in / log-out times are sourced from the CXOne (Agent Time Card) report. Entries submitted through the Late/Early Time Form take priority, and approved disputes override previous records.</div>
-      <div class="vm-sec">📈 Attendance % = Hours Worked ÷ Hours Expected, using the same logic as the Performance → Attendance Tracker.
-        <ul class="vm-list">
-          <li>Hours Worked = the lower of (Shift Length − Late Minutes − Early Leave Minutes) and the total logged-in hours</li>
-          <li>Only time between the scheduled shift start and end counts; time logged before the start or after the end is not counted</li>
-          <li>Every minute late or left early reduces the hours; the 10-minute grace period only decides the Late / Left Early / Short Hours tag</li>
-          <li>Logged-out time during the shift of more than 10 minutes is tagged Short Hours</li>
-          <li>Called Off and NCNS count as expected hours with 0 hours worked</li>
-        </ul></div>
-      <div class="vm-sec">💡 Calendar colors indicate attendance status (Present, Late/Left Early, Called Off/NCNS, Leave, OFF, and Upcoming).</div>
-    </div>
-  </details>
-</section>
+<!-- ============ (merged into Agent Summary) MONTHLY ROSTER ============ -->
+
 
 <!-- ============ TEAM ROSTER (agents per supervisor) ============ -->
 <section class="tab-panel" id="teamTab" hidden>
@@ -1562,7 +1557,7 @@ document.querySelectorAll('[data-tab]').forEach(el =>
 
 /* Open the page named in the URL (#qaTab, ...) on load and when the hash changes (back / forward) */
 function showTabFromHash() {
-  const id = location.hash.slice(1);
+  const id = location.hash.slice(1) === 'rosterTab' ? 'agentSumTab' : location.hash.slice(1);   // the Monthly roster now lives inside Agent Summary
   const p = id && document.getElementById(id);
   if (p && p.classList.contains('tab-panel') && id !== activeTab) showTab(id);
 }
@@ -1760,7 +1755,6 @@ const TAB_RENDERERS = {
   summaryTab: () => { buildSummary(); },
   agentSumTab: buildAgentSummary,
   scheduleTab: buildScheduleView,
-  rosterTab: buildRosterView,
   teamTab: buildTeamView,
   ptoTab: () => buildRecordTable('pto'),
   calledOffTab: () => buildRecordTable('att'),
@@ -2314,7 +2308,7 @@ function shiftRosterMonth(delta) {
   buildRosterView();
 }
 
-function buildRosterView() {
+function buildRosterView(agent) {
   let ym = $('rosterMonth').value;
   if (!ym) { ym = ymd(estNow()).slice(0, 7); $('rosterMonth').value = ym; }
   const [y, m] = ym.split('-').map(Number);
@@ -2349,7 +2343,7 @@ function buildRosterView() {
   /* Attendance numbers always use the EST month (same as Scorecard > Attendance), even when the days are shown in PH time */
   data.forEach(x => { x.est = ph ? days.map(date => attendanceFor(x.r, date, today, idx)) : x.cells.map(c => c.att); });
 
-  const view = $('rosterView').value, sel = $('rosterAgent'), prevAgent = sel.value;
+  const view = $('rosterView').value, sel = $('rosterAgent'), prevAgent = typeof agent === 'string' && agent ? agent : sel.value;
   sel.innerHTML = data.map(x => `<option value="${esc(x.r.Name)}">${esc(x.r.Name)}</option>`).join('');
   if (data.some(x => x.r.Name === prevAgent)) sel.value = prevAgent;
   sel.hidden = view !== 'calendar';
@@ -4009,16 +4003,10 @@ function disputeLinkHtml(name, date, supervisor) {
 /* Only days that are below 100% attendance can be disputed (a day showing 100.0% has nothing to correct) */
 const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind) && x.exp > 0 && (x.worked / x.exp) * 100 < 99.95;
 
-/* "Open my calendar": the Monthly roster for the agent and the latest month ticked in the Agent summary */
+/* "View my schedule": scroll to the schedule calendar further down this page */
 function openMyCalendar() {
-  const name = $('agSumAgent').value;
-  if (!name) return;
-  const last = [...agSumSel].sort().pop();
-  if (last) $('rosterMonth').value = last;
-  $('rosterSupervisor').value = ALL;
-  showTab('rosterTab');
-  history.replaceState(null, '', '#rosterTab');
-  rosterPick(name);
+  const el = $('agSumSchedule');
+  if (el && !el.hidden) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* My attendance for one agent over the months ticked in the Agent summary (hours and day counts are added up) */
@@ -4045,7 +4033,7 @@ function myAttendanceHtml(r, selYm, periodLabel) {
         ${chip('present', `✔ Present: ${c.present}`)}${chip('partial', `⏰ Late: ${late}`)}${chip('partial', `↘️ Left early: ${early}`)}${chip('partial', `⏱ Short hours: ${short}`)}${chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`)}${chip('leave', `🌴 Leave: ${c.leave}`)}
       </div>
       <div class="my-actions">
-        <button type="button" class="my-btn" onclick="openMyCalendar()">📅 Open my calendar</button>
+        <button type="button" class="my-btn" onclick="openMyCalendar()">📅 View my schedule</button>
         <a class="my-btn" href="${esc(disputeUrl(r.Name, '', r.Supervisor))}" target="_blank" rel="noopener" title="Dispute a wrong log-in or log-out time">🛠 Dispute a log-in / log-out</a>
       </div>
     </div></div>`;
@@ -4056,7 +4044,7 @@ function myAttendanceHtml(r, selYm, periodLabel) {
    for the ticked months (or Year to date). Several months are combined with the same
    rules as the other pages (hours and QA audits added up, scores averaged, call / ticket counts added up).
    ===================================================================== */
-let agSumSel = new Set(), agSumSelInit = false, agSumWired = false, agSumMonths = [];
+let agSumSel = new Set(), agSumSelInit = false, agSumWired = false, agSumMonths = [], agSumCalKey = '';
 /* Columns of the Overall Metric Scorecard shown on this tab */
 const AGSUM_COLS = ['Calls Handled', 'Tickets Opened', 'AHT', 'QA', 'Working Rate', 'Occupancy', 'Compliance', 'Misroutes', 'FCR Count (First Contact Resolution)'];
 /* Card label + accepted sheet header names (compared without case, spaces or punctuation) for each scorecard column */
@@ -4119,7 +4107,8 @@ function buildAgentSummary() {
   const box = $('agSumBody'), sel = $('agSumAgent');
   if (!box) return;
   wireAgSum();
-  if (!estData.length) { box.innerHTML = '<div class="empty" style="--c:#6c757d">Loading data...</div>'; return; }
+  const schedBox = $('agSumSchedule');
+  if (!estData.length) { box.innerHTML = '<div class="empty" style="--c:#6c757d">Loading data...</div>'; schedBox.hidden = true; return; }
   const D = summaryData();
   agSumMonths = D.yms;
   /* Agent list (shares the choice of "My attendance") */
@@ -4138,7 +4127,7 @@ function buildAgentSummary() {
   if (!agSumSel.size) agSumSel.add(D.yms[D.yms.length - 1]);
   renderAgSumMonthPicker();
   const a = D.agents.find(x => x.name === sel.value);
-  if (!a) { box.innerHTML = '<div class="my-lbl">Pick an agent to see their summary.</div>'; return; }
+  if (!a) { box.innerHTML = '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; return; }
   try { localStorage.setItem(MY_AGENT_KEY, a.name); } catch (e) {}
 
   const selYm = D.yms.filter(m => agSumSel.has(m)), multi = selYm.length > 1;
@@ -4222,6 +4211,13 @@ function buildAgentSummary() {
     <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
     <div class="panel"><div class="schedule-container">${stack}</div></div>
     <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span></div>`;
+
+  /* Schedule calendar for the same agent. The month follows the latest ticked month whenever the agent or months change;
+     stepping months inside the calendar is kept when the page just refreshes. */
+  schedBox.hidden = false;
+  const calKey = a.name + '|' + selYm.join(',');
+  if (calKey !== agSumCalKey) { agSumCalKey = calKey; $('rosterMonth').value = selYm[selYm.length - 1]; }
+  buildRosterView(a.name);
 }
 
 const trackerTip = x => [x.shift && !isOff(x.shift) ? `Shift: ${convertShiftRange(x.shift)} EST` : '', actualTip(x)].filter(Boolean).join('\n');
