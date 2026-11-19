@@ -1278,7 +1278,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       <div class="msel-panel" id="qaMonthPanel" hidden></div>
     </div>
     <select id="qaSupervisor" onchange="buildQA()"><option>All Supervisors</option></select>
-    <input type="text" id="qaSearch" placeholder="🔍 Search analyst or ticket..." onkeyup="buildQA()" style="width:280px">
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
   </div>
   <div class="daily-summary">
@@ -1297,7 +1296,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       </div>
     </div>
     <div class="qq-body">
-      <div class="qq-bars" id="qyBars"></div>
+      <div class="qq-bars" id="qyBars" data-qq="yes"></div>
       <div class="qq-trend" id="qyTrend"></div>
     </div>
   </div>
@@ -1311,7 +1310,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       </div>
     </div>
     <div class="qq-body">
-      <div class="qq-bars" id="qqBars"></div>
+      <div class="qq-bars" id="qqBars" data-qq="no"></div>
       <div class="qq-trend" id="qqTrend"></div>
     </div>
   </div>
@@ -2721,10 +2720,10 @@ function buildQA() {
   const sups = [...new Set(picked.map(x => x.supervisor).filter(Boolean))].sort();
   supSel.innerHTML = `<option>${ALL}</option>` + sups.map(s => `<option>${esc(s)}</option>`).join('');
   if (sups.includes(prevSup)) supSel.value = prevSup;
-  const sup = supSel.value, q = up($('qaSearch').value);
+  const sup = supSel.value;
 
   const rows = picked
-    .filter(x => (sup === ALL || x.supervisor === sup) && (!q || up(`${x.analyst} ${x.ticket}`).includes(q)))
+    .filter(x => sup === ALL || x.supervisor === sup)
     .sort((a, b) => b.date.localeCompare(a.date) || a.analyst.localeCompare(b.analyst));
 
   const avgOf = list => {
@@ -2801,14 +2800,21 @@ function buildQA() {
   $('qaAgents').textContent = list.length;
   $('qaCount').textContent = rows.length;
   $('qaAvg').textContent = fmtScore(avgOf(rows));
-  buildQaQuestions(rows, all.filter(x => (sup === ALL || x.supervisor === sup) && (!q || up(`${x.analyst} ${x.ticket}`).includes(q))));
+  buildQaQuestions(rows, all.filter(x => sup === ALL || x.supervisor === sup));
 }
 
 /* ---------- QA: which questions (Q1 - Q25) are answered "No" the most, and how that moves month by month ----------
    Follows the QA filters: the bars use the ticked months + supervisor + search; the trend line uses every month (same supervisor + search).
    Only Yes / No answers count; N/A and blank answers are skipped. "No %" = No / (Yes + No). Click a bar to see that question's trend. */
-const qqUi = { no: { p: 'qq', sel: null, all: false, word: 'No' }, yes: { p: 'qy', sel: null, all: false, word: 'Yes' } };   // What went wrong (No) / What went well (Yes)
-let qqLast = { rows: [], trend: [] }, qqBound = false;
+/* Panels: What went wrong (No) / What went well (Yes). Scope 'qa' = Quality Assurance tab, 'sum' = Agent Summary page. p = id prefix of the panel's elements */
+const qqUi = {
+  no:   { p: 'qq', kind: 'no',  scope: 'qa',  sel: null, all: false, word: 'No' },
+  yes:  { p: 'qy', kind: 'yes', scope: 'qa',  sel: null, all: false, word: 'Yes' },
+  sno:  { p: 'sq', kind: 'no',  scope: 'sum', sel: null, all: false, word: 'No' },
+  syes: { p: 'sy', kind: 'yes', scope: 'sum', sel: null, all: false, word: 'Yes' }
+};
+const qqData = { qa: { rows: [], trend: [] }, sum: { rows: [], trend: [] } };
+let qqBound = false;
 const qaAnswerKind = v => { const s = String(v ?? '').trim().toLowerCase(); return /^(no|n)$/.test(s) ? 'no' : /^(yes|y)$/.test(s) ? 'yes' : ''; };
 const qaQInfo = label => qaQMap.get(parseInt(String(label).replace(/\D/g, ''), 10) || 0) || null;
 const qaLines = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);      // one entry per line of a sheet cell
@@ -2826,11 +2832,11 @@ function qaQuestionStats(rows) {
   });
   return [...m.values()].map(e => ({ ...e, tot: e.no + e.yes, rate: e.no + e.yes ? e.no / (e.no + e.yes) * 100 : 0, yrate: e.no + e.yes ? e.yes / (e.no + e.yes) * 100 : 0 }));
 }
-function qqToggle(kind) { qqUi[kind].all = !qqUi[kind].all; buildQaQuestions(); }
-function qqTrendHtml(label, kind) {
-  const W_ = qqUi[kind].word;
+function qqToggle(key) { qqUi[key].all = !qqUi[key].all; qqRender(qqUi[key].scope); }
+function qqTrendHtml(label, key) {
+  const U_ = qqUi[key], kind = U_.kind, W_ = U_.word;
   const byMonth = new Map();
-  qqLast.trend.forEach(x => { if (!byMonth.has(x.ym)) byMonth.set(x.ym, []); byMonth.get(x.ym).push(x); });
+  qqData[U_.scope].trend.forEach(x => { if (!byMonth.has(x.ym)) byMonth.set(x.ym, []); byMonth.get(x.ym).push(x); });
   const pts = [...byMonth.keys()].sort().map(ym => {
     const s = qaQuestionStats(byMonth.get(ym)).find(e => e.label === label);
     return { ym, cnt: s ? s[kind] : 0, tot: s ? s.tot : 0, rate: s && s.tot ? (kind === 'no' ? s.rate : s.yrate) : null };
@@ -2857,16 +2863,29 @@ function qqTrendHtml(label, kind) {
     `<div class="qq-note">${esc(mlab(last.ym))}: ${last.cnt} ${W_} of ${last.tot} answered (${last.rate.toFixed(1)}%)${delta}</div>`;
 }
 function buildQaQuestions(rows, trend) {
-  if (rows) qqLast = { rows, trend: trend || rows };
+  if (rows) qqData.qa = { rows, trend: trend || rows };
+  qqRender('qa');
+}
+/* Agent Summary: the same two panels for one agent (rows = the ticked months, trend = every month) */
+function buildSumQuestions(rows, trend) {
+  qqData.sum = { rows, trend: trend || rows };
+  qqRender('sum');
+}
+function qqRender(scope) {
   if (!qqBound) {
-    qqBound = true;
-    Object.values(qqUi).forEach(u => $(u.p + 'Bars').addEventListener('click', e => { const r = e.target.closest('.qq-row'); if (r) { u.sel = r.dataset.q; buildQaQuestions(); } }));
+    qqBound = true;       // one listener for every panel: a click on a bar picks that question for that panel's monthly trend
+    document.addEventListener('click', e => {
+      const r = e.target.closest('.qq-row'), host = r && r.closest('[data-qq]');
+      if (!host) return;
+      const u = qqUi[host.dataset.qq]; u.sel = r.dataset.q; qqRender(u.scope);
+    });
   }
-  const allStats = qaQuestionStats(qqLast.rows);
-  Object.entries(qqUi).forEach(([kind, u]) => {
-    const stats = allStats.slice(), rateOf = s => kind === 'no' ? s.rate : s.yrate, W_ = u.word;
+  const data = qqData[scope], allStats = qaQuestionStats(data.rows);
+  Object.entries(qqUi).filter(([, u]) => u.scope === scope).forEach(([key, u]) => {
+    const kind = u.kind, stats = allStats.slice(), rateOf = s => kind === 'no' ? s.rate : s.yrate, W_ = u.word;
+    if (!$(u.p + 'Bars')) return;          // that panel is not on the page right now
     stats.sort((a, b) => b[kind] - a[kind] || rateOf(b) - rateOf(a) || a.n - b.n);
-    $(u.p + 'Sub').textContent = `${qqLast.rows.length} audit${qqLast.rows.length === 1 ? '' : 's'} · N/A and blank answers are skipped`;
+    $(u.p + 'Sub').textContent = `${data.rows.length} audit${data.rows.length === 1 ? '' : 's'} · N/A and blank answers are skipped`;
     $(u.p + 'More').hidden = stats.length <= 10;
     $(u.p + 'More').textContent = u.all ? 'Show top 10' : `Show all ${stats.length}`;
     if (!stats.length) {
@@ -2882,7 +2901,7 @@ function buildQaQuestions(rows, trend) {
       <span class="qq-num"><b>${s[kind]}</b> ${W_} · ${rateOf(s).toFixed(0)}%</span>
       ${qaQText(s.label) ? `<span class="qq-qt">${esc(qaQText(s.label))}</span>` : ''}
     </div>`).join('');
-    $(u.p + 'Trend').innerHTML = qqTrendHtml(u.sel, kind);
+    $(u.p + 'Trend').innerHTML = qqTrendHtml(u.sel, key);
   });
 }
 
@@ -4420,6 +4439,8 @@ function buildAgentSummary() {
     <div class="stats sum-cards five" style="margin-bottom:16px">${cards}</div>
     <h3 class="sum-h" style="margin-top:16px">Quality assurance</h3>
     <div class="panel"><div class="schedule-container" id="agSumQaBox">${agSumQaHtml()}</div></div>
+    <div class="panel qq yes"><div class="qq-head"><b>📈 What went well</b><span class="qq-sub" id="sySub"></span><div class="qq-ctl"><button type="button" id="syMore" onclick="qqToggle('syes')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="syBars" data-qq="syes"></div><div class="qq-trend" id="syTrend"></div></div></div>
+    <div class="panel qq"><div class="qq-head"><b>📉 What went wrong</b><span class="qq-sub" id="sqSub"></span><div class="qq-ctl"><button type="button" id="sqMore" onclick="qqToggle('sno')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="sqBars" data-qq="sno"></div><div class="qq-trend" id="sqTrend"></div></div></div>
     <h3 class="sum-h">Overall Metric Scorecard</h3>
     <div class="panel"><div class="schedule-container">${scores}</div></div>
     <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
@@ -4434,6 +4455,11 @@ function buildAgentSummary() {
   const calKey = a.name + '|' + selYm.join(',');
   if (calKey !== agSumCalKey) { agSumCalKey = calKey; $('rosterMonth').value = selYm[selYm.length - 1]; }
   buildRosterView(a.name);
+
+  /* What went well / What went wrong for this agent: the ticked months for the bars, every month for the trend */
+  const myQa = qaList.map((x, id) => { const date = normalizeDate(x.CallDate); return { analyst: String(x['Analyst Name'] ?? '').trim(), ym: date.slice(0, 7), id }; })
+    .filter(x => x.ym && normName(x.analyst) === normName(a.name));
+  buildSumQuestions(myQa.filter(x => selYm.includes(x.ym)), myQa);
 }
 
 const trackerTip = x => [x.shift && !isOff(x.shift) ? `Shift: ${convertShiftRange(x.shift)} EST` : '', actualTip(x)].filter(Boolean).join('\n');
