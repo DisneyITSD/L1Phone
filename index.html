@@ -4346,9 +4346,9 @@ function buildAgentSummary() {
     <details class="ag-sec" data-k="qa"${agSecOpen.has('qa') ? ' open' : ''}>
       <summary class="sum-h" style="margin-top:16px">Quality assurance</summary>
       <div class="panel"><div class="schedule-container" id="agSumQaBox">${agSumQaHtml()}</div></div>
-    </details>
-    <div class="panel qq yes"><div class="qq-head"><b>📈 What went well</b><span class="qq-sub" id="sySub"></span><div class="qq-ctl"><button type="button" id="syMore" onclick="qqToggle('syes')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="syBars" data-qq="syes"></div><div class="qq-trend" id="syTrend"></div></div></div>
-    <div class="panel qq"><div class="qq-head"><b>📉 What went wrong</b><span class="qq-sub" id="sqSub"></span><div class="qq-ctl"><button type="button" id="sqMore" onclick="qqToggle('sno')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="sqBars" data-qq="sno"></div><div class="qq-trend" id="sqTrend"></div></div></div>`;
+      <div class="panel qq yes" style="margin-top:12px"><div class="qq-head"><b>📈 What went well</b><span class="qq-sub" id="sySub"></span><div class="qq-ctl"><button type="button" id="syMore" onclick="qqToggle('syes')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="syBars" data-qq="syes"></div><div class="qq-trend" id="syTrend"></div></div></div>
+    <div class="panel qq"><div class="qq-head"><b>📉 What went wrong</b><span class="qq-sub" id="sqSub"></span><div class="qq-ctl"><button type="button" id="sqMore" onclick="qqToggle('sno')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="sqBars" data-qq="sno"></div><div class="qq-trend" id="sqTrend"></div></div></div>
+    </details>`;
 
 
   /* Schedule calendar for the same agent. The month follows the latest ticked month whenever the agent or months change;
