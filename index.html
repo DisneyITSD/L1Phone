@@ -3285,7 +3285,7 @@ function buildSsMcs(selYms, supBy) {
     return mcsCols.map(i => {
       if (i === I.agent) return `<td>${label}</td>`;
       if (/no data/i.test(r[i] || '')) return '<td class="nodata">No Data</td>';
-      const b = i === I.sup ? '' : mcsBand(mcsHeads[i], r[i]);
+      const b = i === I.sup ? '' : mcsBand(mcsHeads[i], r[i], r._n);
       return `<td${b ? ` class="kc-${b}"` : ''}>${esc(i === I.sup ? sc : r[i]) || '—'}</td>`;
     }).join('');
   };
@@ -3422,14 +3422,14 @@ const METRIC_BANDS = {
 const metricBand = i => METRIC_BANDS[String(metricHeads[i] || '').toLowerCase().trim()] || null;
 
 /* Overall Metric Scorecard: colour from the KPI targets (only columns that have a target; percent values only) */
-function mcsBand(head, v) {
+function mcsBand(head, v, months) {
   if (!v || /no data/i.test(v) || !/%\s*$/.test(String(v).trim())) return '';
   const k = mcsKey(head), n = metricVal(v);
   if (typeof n !== 'number') return '';
   if (k === 'qa') return n >= 95 ? 'good' : n >= 85 ? 'mid' : 'low';
   if (k === 'workingrate') return n >= 75 ? 'good' : n >= 70 ? 'mid' : 'low';
   if (k === 'compliance') return n >= 100 ? 'good' : 'low';
-  if (k === 'misroutes') return n < 1.03 ? 'good' : n < 2 ? 'mid' : 'low';
+  if (k === 'misroutes') return months > 1 ? '' : n < 1.03 ? 'good' : n < 2 ? 'mid' : 'low';   // several months are added up, so the per-month target no longer applies
   if (k.startsWith('fcrcount')) return n >= 82 ? 'good' : n >= 60 ? 'mid' : 'low';
   return '';
 }
@@ -3627,12 +3627,12 @@ function initMcsMonth() {
 }
 
 /* Combine several months into one row per agent:
-   - the columns listed in MCS_SUM are ADDED UP
-   - every other column (percentages, times, rates, misroutes, FCR ...) is AVERAGED
+   - the columns listed in MCS_SUM are ADDED UP (calls, tickets, misroutes ...)
+   - every other column (percentages, times, rates, FCR ...) is AVERAGED
    "No Data" / blank months are ignored. */
 const MCS_SUM = ['Calls Handled', 'Tickets Opened', 'Wrap Up Time - Instances', 'Wrap Up Time - Total Time',
   'Extended Wrap up Time - Instances', 'Extended Wrap up Time - Total Time', 'Activity Code - Restroom - Instances',
-  'Restroom Total Time', 'Refused Calls', 'PTO Used'].map(mcsKey);
+  'Restroom Total Time', 'Refused Calls', 'PTO Used', 'Misroutes'].map(mcsKey);
 const mcsIsSum = h => { const k = mcsKey(h); return MCS_SUM.some(s => k === s || (s.length > 4 && k.startsWith(s))); };
 function mcsAggregate(rowsIn) {
   const I = mcsI, rank = m => { const t = Date.parse(m + ' 1, 2000'); return isNaN(t) ? 0 : t; };
@@ -3712,7 +3712,7 @@ function buildMcs() {
       list.sort((a, b) => rank(a[I.month]) - rank(b[I.month]));
       const sc = supOf(list[list.length - 1]), g = normName(list[0][I.agent]), open = mcsOpen.has(g);
       const row = (r, label, cls, hid) => `<tr class="${cls}" data-g="${esc(g)}" style="${supStyle(sc)}"${hid ? ' hidden' : ''}>` +
-        mcsCols.map(i => { const b = i === I.agent || i === I.sup ? '' : mcsBand(mcsHeads[i], r[i]); return `<td${b ? ` class="kc-${b}"` : ''}>${i === I.agent ? label : esc(i === I.sup ? sc : r[i]) || '—'}</td>`; }).join('') + '</tr>';
+        mcsCols.map(i => { const b = i === I.agent || i === I.sup ? '' : mcsBand(mcsHeads[i], r[i], r._n); return `<td${b ? ` class="kc-${b}"` : ''}>${i === I.agent ? label : esc(i === I.sup ? sc : r[i]) || '—'}</td>`; }).join('') + '</tr>';
       if (list.length < 2) return row(list[0], `${esc(list[0][I.agent])} <small>· ${esc(list[0][I.month] || '')}</small>`, 'mcs-single sup-row', false);
       /* collapsible agent row = Total for the ticked months; click it to show / hide the monthly rows */
       return row(mcsAggregate(list)[0], `<span class="caret"></span>${esc(list[0][I.agent])}`, `grp-head mcs-agent sup-row${open ? ' open' : ''}`, false) +
@@ -3740,7 +3740,7 @@ function buildMcs() {
     return `<tr class="${supClass(sc)}" style="${supStyle(sc)}">` +
       mcsCols.map(i => {
         if (i === I.agent && r._n && r._n < mcsSel.size) return `<td>${esc(r[i])} <small class="mo" title="Totals / averages cover only the months this agent has data">(${r._n}/${mcsSel.size} mo)</small></td>`;
-        const b = i === I.sup ? '' : mcsBand(mcsHeads[i], r[i]);
+        const b = i === I.sup ? '' : mcsBand(mcsHeads[i], r[i], r._n);
         return `<td${b ? ` class="kc-${b}"` : ''}>${esc(i === I.sup ? sc : r[i]) || '—'}</td>`;
       }).join('') + '</tr>';
   }).join('') : `<tr><td colspan="${mcsCols.length || 1}">No agents found</td></tr>`;
@@ -4349,7 +4349,7 @@ function buildAgentSummary() {
     if (nd) return cardC(label, '—', '#1e88e5', 'Overall Metric Scorecard', tip);
     const num = metricVal(v);
     const shown = blue && typeof num === 'number' ? num.toLocaleString() : esc(v);
-    return cardC(label, shown, blue ? '#1e88e5' : bc(mcsBand(mcsHeads[i], v)), 'Overall Metric Scorecard', tip);
+    return cardC(label, shown, blue ? '#1e88e5' : bc(mcsBand(mcsHeads[i], v, myRow && myRow._n)), 'Overall Metric Scorecard', tip);
   };
   const totals = D.agents.map(x => sumRoll(x, selYm).total).filter(v => v != null).sort((p, q) => q - p);
   const rank = me.total != null ? totals.findIndex(v => v <= me.total) + 1 : null;
@@ -4366,8 +4366,8 @@ function buildAgentSummary() {
     scCard('Tickets Opened', '🎫 Tickets opened', true);
 
   /* Overall Metric Scorecard: the same table as Performance > Metric Scorecard (the agent's month rows and a Total row for several months) */
-  const sCell = (v, i) => { if (/no data/i.test(v || '')) return '<td class="nodata">No Data</td>'; const b = mcsBand(mcsHeads[i], v); return `<td${b ? ` class="kc-${b}"` : ''}>${esc(v) || '—'}</td>`; };
-  const sRow = (label, r, cls) => `<tr class="${cls}"><td>${label}</td>${scoreCols.map(i => sCell(r[i], i)).join('')}</tr>`;
+  const sCell = (v, i, n) => { if (/no data/i.test(v || '')) return '<td class="nodata">No Data</td>'; const b = mcsBand(mcsHeads[i], v, n); return `<td${b ? ` class="kc-${b}"` : ''}>${esc(v) || '—'}</td>`; };
+  const sRow = (label, r, cls) => `<tr class="${cls}"><td>${label}</td>${scoreCols.map(i => sCell(r[i], i, r._n)).join('')}</tr>`;
   const scores = myC.length && scoreCols.length ? `<table id="agSumMcs" class="nosort"><thead><tr><th>Month</th>${scoreCols.map(i => `<th>${esc(mcsHeads[i])}</th>`).join('')}</tr></thead><tbody>${
     myC.map(r => sRow(esc(r[cI.month] || '—'), r, '')).join('') +
     (multi && myC.length > 1 ? sRow('Total / average', mcsAggregate(myC)[0], 'agsum-total') : '')
