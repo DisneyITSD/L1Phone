@@ -1025,7 +1025,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
-  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick the agent in the schedule at the top, then tick one or more months (or Year to date) beside the Overall Metric Scorecard; everything below is calculated automatically.</div>
+  <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick the agent in the schedule at the top, then tick one or more months (or Year to date) in the Month box under “How attendance is calculated”; everything below is calculated automatically.</div>
   <div id="agSumSchedule">
     <h3 class="sum-h" style="margin-top:4px">📅 Schedule</h3>
     <div class="view-hint">📊 Monthly schedule for the agent picked here, built from the weekly roster plus the "Schedule By Date" tab.<br>Colours show each day's attendance. A purple outline 🔁 marks days changed from the weekly roster. Hover a day for details.</div>
@@ -1037,10 +1037,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       <select id="rosterTimezone" onchange="buildRosterView()"><option value="EST">EST</option><option value="PH">PH</option></select>
       <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
     </div>
-    <div id="agSumMonthPark" hidden><div class="msel" id="agSumMonthWrap">
-      <button type="button" id="agSumMonthBtn" class="msel-btn">Month ▾</button>
-      <div class="msel-panel" id="agSumMonthPanel" hidden></div>
-    </div></div>
     <div id="agSumSchedBody">
     <div id="rosterCal"></div>
     <div class="panel" style="margin-top:12px">
@@ -1078,7 +1074,14 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
     </div>
     </div>
   </div>
-  <div id="agSumBody" style="margin-top:28px"></div>
+  <div id="agSumMonthPark" class="sum-h-row" style="margin:20px 0 0;justify-content:flex-start" hidden>
+    <b>📅 Month</b>
+    <div class="msel" id="agSumMonthWrap">
+      <button type="button" id="agSumMonthBtn" class="msel-btn">Month ▾</button>
+      <div class="msel-panel" id="agSumMonthPanel" hidden></div>
+    </div>
+  </div>
+  <div id="agSumBody" style="margin-top:12px"></div>
 </section>
 
 <section class="tab-panel" id="supervisorTab" hidden>
@@ -4294,10 +4297,9 @@ function agSumQaHtml() {
 function buildAgentSummary() {
   const box = $('agSumBody'), sel = $('agSumAgent');
   if (!box) return;
-  $('agSumMonthPark').appendChild($('agSumMonthWrap'));   // keep the picker (and its listeners) safe while the body is rebuilt
   wireAgSum();
   const schedBox = $('agSumSchedBody');
-  if (!estData.length) { box.innerHTML = '<div class="empty" style="--c:#6c757d">Loading data...</div>'; schedBox.hidden = true; return; }
+  if (!estData.length) { box.innerHTML = '<div class="empty" style="--c:#6c757d">Loading data...</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; return; }
   const D = summaryData();
   agSumMonths = D.yms;
   /* Agent list (shares the choice of "My attendance") */
@@ -4316,7 +4318,7 @@ function buildAgentSummary() {
   if (!agSumSel.size) agSumSel.add(D.yms[D.yms.length - 1]);
   renderAgSumMonthPicker();
   const a = D.agents.find(x => x.name === sel.value);
-  if (!a) { box.innerHTML = '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; return; }
+  if (!a) { box.innerHTML = '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; return; }
   try { localStorage.setItem(MY_AGENT_KEY, a.name); } catch (e) {}
 
   const selYm = D.yms.filter(m => agSumSel.has(m)), multi = selYm.length > 1;
@@ -4397,17 +4399,17 @@ function buildAgentSummary() {
     <div class="stats sum-cards five" style="margin-bottom:16px">${cards}</div>
     <h3 class="sum-h" style="margin-top:16px">Quality assurance</h3>
     <div class="panel"><div class="schedule-container" id="agSumQaBox">${agSumQaHtml()}</div></div>
-    <div class="sum-h-row"><h3 class="sum-h">Overall Metric Scorecard</h3><span id="agSumMonthSlot"></span></div>
+    <h3 class="sum-h">Overall Metric Scorecard</h3>
     <div class="panel"><div class="schedule-container">${scores}</div></div>
     <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
     <div class="panel"><div class="schedule-container">${stack}</div></div>
     <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span></div>`;
 
-  $('agSumMonthSlot').appendChild($('agSumMonthWrap'));
 
   /* Schedule calendar for the same agent. The month follows the latest ticked month whenever the agent or months change;
      stepping months inside the calendar is kept when the page just refreshes. */
   schedBox.hidden = false;
+  $('agSumMonthPark').hidden = false;
   const calKey = a.name + '|' + selYm.join(',');
   if (calKey !== agSumCalKey) { agSumCalKey = calKey; $('rosterMonth').value = selYm[selYm.length - 1]; }
   buildRosterView(a.name);
