@@ -1288,6 +1288,19 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   </div>
   <div class="podium" id="qaPodium"></div>
   <div class="trk-legend" id="qaLegend"></div>
+  <div class="panel qq yes" id="qaWell">
+    <div class="qq-head">
+      <b>📈 What went well</b>
+      <span class="qq-sub" id="qySub"></span>
+      <div class="qq-ctl">
+        <button type="button" id="qyMore" onclick="qqToggle('yes')">Show all</button>
+      </div>
+    </div>
+    <div class="qq-body">
+      <div class="qq-bars" id="qyBars"></div>
+      <div class="qq-trend" id="qyTrend"></div>
+    </div>
+  </div>
   <div class="panel qq" id="qaQuestions">
     <div class="qq-head">
       <b>📉 What went wrong</b>
@@ -1300,19 +1313,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
     <div class="qq-body">
       <div class="qq-bars" id="qqBars"></div>
       <div class="qq-trend" id="qqTrend"></div>
-    </div>
-  </div>
-  <div class="panel qq yes" id="qaWell">
-    <div class="qq-head">
-      <b>📈 What went well</b>
-      <span class="qq-sub" id="qySub"></span>
-      <div class="qq-ctl">
-        <button type="button" id="qyMore" onclick="qqToggle('yes')">Show all</button>
-      </div>
-    </div>
-    <div class="qq-body">
-      <div class="qq-bars" id="qyBars"></div>
-      <div class="qq-trend" id="qyTrend"></div>
     </div>
   </div>
   <div class="panel">
