@@ -589,7 +589,8 @@ select:focus,input:focus{outline:0;border-color:var(--blue);box-shadow:0 0 0 3px
 .sum-h{display:flex;align-items:center;gap:10px;margin:32px 0 12px;font-size:17px;font-weight:600;color:var(--ink)}
 .sum-h::before{content:"";width:4px;height:18px;border-radius:2px;background:var(--blue)}
 /* Agent Summary: collapsible sections */
-details.ag-sec>summary{list-style:none;cursor:pointer;user-select:none}
+details.ag-sec>summary{list-style:none;cursor:pointer;user-select:none;margin:16px 0 0}
+details.ag-sec[open]>summary{margin-bottom:12px}
 details.ag-sec>summary::-webkit-details-marker{display:none}
 details.ag-sec>summary::after{content:"\25B8";margin-left:0;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
 details.ag-sec[open]>summary::after{content:"\25BE"}
@@ -4335,7 +4336,7 @@ function buildAgentSummary() {
     <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(periodLabel)}</small></div></div>
     <div class="stats sum-cards five" style="margin-bottom:16px">${cards}</div>
     <details class="ag-sec" data-k="stack"${agSecOpen.has('stack') ? ' open' : ''}>
-      <summary class="sum-h" style="margin-top:16px">Performance stack ranking</summary>
+      <summary class="sum-h">Performance stack ranking</summary>
       <div class="panel"><div class="schedule-container">${stack}</div></div>
     </details>
     <details class="ag-sec" data-k="mcs"${agSecOpen.has('mcs') ? ' open' : ''}>
@@ -4344,7 +4345,7 @@ function buildAgentSummary() {
       <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span></div>
     </details>
     <details class="ag-sec" data-k="qa"${agSecOpen.has('qa') ? ' open' : ''}>
-      <summary class="sum-h" style="margin-top:16px">Quality assurance</summary>
+      <summary class="sum-h">Quality assurance</summary>
       <div class="panel"><div class="schedule-container" id="agSumQaBox">${agSumQaHtml()}</div></div>
       <div class="panel qq yes" style="margin-top:12px"><div class="qq-head"><b>📈 What went well</b><span class="qq-sub" id="sySub"></span><div class="qq-ctl"><button type="button" id="syMore" onclick="qqToggle('syes')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="syBars" data-qq="syes"></div><div class="qq-trend" id="syTrend"></div></div></div>
     <div class="panel qq"><div class="qq-head"><b>📉 What went wrong</b><span class="qq-sub" id="sqSub"></span><div class="qq-ctl"><button type="button" id="sqMore" onclick="qqToggle('sno')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="sqBars" data-qq="sno"></div><div class="qq-trend" id="sqTrend"></div></div></div>
