@@ -414,9 +414,17 @@ html[data-theme=dark] #mcsTable td.kc-low,html[data-theme=dark] #agSumBody td.kc
 .qq-row.sel{background:color-mix(in srgb,var(--blue) 12%,transparent);box-shadow:inset 3px 0 0 var(--blue)}
 .qq-lab{font-weight:700}
 .qq-qt{grid-column:2 / -1;font-size:12px;line-height:1.3;opacity:.75;margin:-2px 0 3px}
-.qq-qfull{font-size:13px;line-height:1.35;margin:0 0 8px}
+.qq-qfull{font-size:14px;line-height:1.35;margin:0 0 12px}
 .qq-qfull small{display:block;opacity:.7;margin-top:2px}
 .qd-qt{opacity:.7;font-size:12px}
+.qq-crit{font-size:12.5px;line-height:1.4;margin:0 0 14px}
+.qq-crit b{display:block;font-size:13px;margin-bottom:3px}
+.qq-crit.yes b{color:#2e7d32}
+.qq-crit.no b{color:#c62828}
+html[data-theme=dark] .qq-crit.yes b{color:#86efac}
+html[data-theme=dark] .qq-crit.no b{color:#f87171}
+.qq-ci{display:flex;gap:7px;align-items:flex-start;margin:4px 0}
+.qq-ci>span:first-child{flex:none;font-size:10px;line-height:1.9}
 .qq-track{height:14px;background:var(--line);border-radius:7px;overflow:hidden}
 .qq-fill{height:100%;border-radius:7px;background:var(--red)}
 .qq-num{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -2780,6 +2788,8 @@ function buildQA() {
 let qqSel = null, qqAll = false, qqLast = { rows: [], trend: [] }, qqBound = false;
 const qaAnswerKind = v => { const s = String(v ?? '').trim().toLowerCase(); return /^(no|n)$/.test(s) ? 'no' : /^(yes|y)$/.test(s) ? 'yes' : ''; };
 const qaQInfo = label => qaQMap.get(parseInt(String(label).replace(/\D/g, ''), 10) || 0) || null;
+const qaLines = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);      // one entry per line of a sheet cell
+const qaCritHtml = (title, s, cls) => { const L = qaLines(s); return L.length ? `<div class="qq-crit ${cls}"><b>${title}</b>${L.map(x => `<div class="qq-ci"><span>${cls === 'yes' ? '🟢' : '🔴'}</span><span>${esc(x)}</span></div>`).join('')}</div>` : ''; };
 const qaQText = label => (qaQInfo(label) || {}).text || '';
 function qaQuestionStats(rows) {
   const m = new Map();
@@ -2801,8 +2811,9 @@ function qqTrendHtml(label) {
     const s = qaQuestionStats(byMonth.get(ym)).find(e => e.label === label);
     return { ym, no: s ? s.no : 0, tot: s ? s.tot : 0, rate: s && s.tot ? s.rate : null };
   });
+  const qi = qaQInfo(label);
   const head = `<div class="qq-tt">${esc(label)} – “No” % by month</div>` +
-    (qaQText(label) ? `<div class="qq-qfull">${esc(qaQText(label))}${(qaQInfo(label).yes || qaQInfo(label).no) ? `<small>${[qaQInfo(label).yes && 'Yes: ' + qaQInfo(label).yes, qaQInfo(label).no && 'Markdown (No): ' + qaQInfo(label).no].filter(Boolean).map(esc).join(' · ')}</small>` : ''}</div>` : '');
+    (qi && qi.text ? `<div class="qq-qfull">${qaLines(qi.text).map(esc).join('<br>')}</div>` + qaCritHtml('✅ YES:', qi.yes, 'yes') + qaCritHtml('❌ NO:', qi.no, 'no') : '');
   const have = pts.filter(p => p.rate != null);
   if (!have.length) return head + '<div class="qq-note">No Yes / No answers for this question yet.</div>';
   const W = 320, H = 180, L = 34, R = 12, T = 18, B = 34, n = pts.length;
