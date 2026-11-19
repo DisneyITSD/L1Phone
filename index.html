@@ -173,6 +173,17 @@ tr.roster-off td{background:#f1f2f4;color:#666;font-style:italic}
 #qaTable tr.grp-head td:first-child{background:#eef6ff;color:var(--navy);font-weight:700}
 #qaTable tr.qa-month td:first-child{padding-left:32px;background:#f8fafc;font-weight:600}
 #qaTable tr.qa-audit td:first-child{padding-left:56px;font-weight:400;color:#334155}
+/* Agent Summary > Quality assurance (same look as the Quality Assurance page) */
+#agSumQa td.qa-score{font-weight:700;white-space:nowrap}
+#agSumQa th:not(:first-child),#agSumQa td:not(:first-child){text-align:center}
+#agSumQa tr.qa-agent td:first-child{background:#eef6ff;color:var(--navy);font-weight:700}
+#agSumQa tr.qa-month td:first-child{padding-left:32px;background:#f8fafc;font-weight:600}
+#agSumQa tr.qa-audit td:first-child{padding-left:56px;font-weight:400;color:#334155;text-decoration:underline dotted;text-underline-offset:3px}
+#agSumQa tr.qa-audit{cursor:pointer}
+#agSumQa tr.qa-audit:hover td{filter:brightness(.97)}
+html[data-theme=dark] #agSumQa tr.qa-agent td:first-child{background:#18233a;color:#c7d6ff}
+html[data-theme=dark] #agSumQa tr.qa-month td:first-child{background:#141b27}
+html[data-theme=dark] #agSumQa tr.qa-audit td:first-child{color:#aab4c4}
 
 /* ---------- Missing Agent Checker ---------- */
 #agentPaste{width:100%;height:180px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:10px}
@@ -4154,6 +4165,8 @@ const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind) && x.e
    rules as the other pages (hours and QA audits added up, scores averaged, call / ticket counts added up).
    ===================================================================== */
 let agSumSel = new Set(), agSumSelInit = false, agSumWired = false, agSumMonths = [], agSumCalKey = '';
+const agQaOpen = new Set();      // opened month rows in the Quality assurance table: 'm|<yyyy-mm>'
+let agQaLast = null;             // { a, selYm, multi } of the last build, so a month row can be opened without rebuilding the page
 /* Columns of the Overall Metric Scorecard shown on this tab */
 const AGSUM_COLS = ['Calls Handled', 'Tickets Opened', 'AHT', 'QA', 'Working Rate', 'Occupancy', 'Compliance', 'Misroutes', 'FCR Count (First Contact Resolution)'];
 /* Card label + accepted sheet header names (compared without case, spaces or punctuation) for each scorecard column */
@@ -4210,6 +4223,46 @@ function wireAgSum() {
     }
     buildAgentSummary();
   });
+  $('agSumBody').addEventListener('click', e => {                 // Quality assurance: ticket -> audit details, month row -> open / close
+    const au = e.target.closest('#agSumQa tr.qa-audit');
+    if (au) { openQaDetail(+au.dataset.qa); return; }
+    const h = e.target.closest('#agSumQa tr.grp-head');
+    if (!h) return;
+    agQaOpen.has(h.dataset.k) ? agQaOpen.delete(h.dataset.k) : agQaOpen.add(h.dataset.k);
+    $('agSumQaBox').innerHTML = agSumQaHtml();
+  });
+}
+
+/* Quality assurance table for the picked agent: the same layout as the Quality Assurance page.
+   One month ticked: every audit of that month. Several months: one row per month (open it for its audits). Click a ticket for the full audit. */
+function agSumQaHtml() {
+  if (!agQaLast) return '';
+  const { a, selYm, multi } = agQaLast;
+  const mine = qaList.map((x, id) => {
+    const date = normalizeDate(x.CallDate);
+    return { analyst: String(x['Analyst Name'] ?? '').trim(), supervisor: String(x.Supervisor ?? '').trim(), date, ym: date.slice(0, 7),
+             ticket: String(x.TicketNumber ?? '').trim(), score: qaPct(x.Score), id };
+  }).filter(x => x.ym && selYm.includes(x.ym) && normName(x.analyst) === normName(a.name))
+    .sort((p, q) => q.date.localeCompare(p.date));              // newest first
+  if (!mine.length) return '<div class="my-lbl">No QA audits for this agent in the selected period.</div>';
+  const avgOf = list => { const s = list.filter(x => x.score != null); return s.length ? s.reduce((t, x) => t + x.score, 0) / s.length : null; };
+  const fmt = v => v == null ? '—' : v.toFixed(1) + '%';
+  const scoreTd = v => `<td class="qa-score${qaBand(v)}" title="${QA_TIP}">${fmt(v)}</td>`;
+  const dateOf = d => d ? fmtDate(parseYMD(d)) : '—';
+  const sup = mine[0].supervisor || a.sup || '';
+  const auditRow = x => `<tr class="qa-audit" data-qa="${x.id}" title="Click to see the audit details"><td>🎫 ${esc(x.ticket) || '—'}</td>${scoreTd(x.score)}<td></td><td>${dateOf(x.date)}</td><td>${esc(x.supervisor)}</td></tr>`;
+  let body = `<tr class="qa-agent sup-row" style="${supStyle(sup)}"><td>${esc(a.name)}</td>${scoreTd(avgOf(mine))}<td>${mine.length}</td><td>${dateOf(mine[0].date)}</td><td>${esc(sup)}</td></tr>`;
+  if (!multi) body += mine.map(auditRow).join('');
+  else {
+    const byMonth = new Map();
+    mine.forEach(x => { if (!byMonth.has(x.ym)) byMonth.set(x.ym, []); byMonth.get(x.ym).push(x); });
+    [...byMonth.keys()].sort().forEach(ym => {
+      const items = byMonth.get(ym), k = 'm|' + ym, open = agQaOpen.has(k);
+      body += `<tr class="grp-head qa-month${moClass(ym)}${open ? ' open' : ''}" data-k="${esc(k)}" title="Click to show / hide"><td><span class="caret"></span>${esc(qaYmLabel(ym))}</td>${scoreTd(avgOf(items))}<td>${items.length}</td><td>${dateOf(items[0].date)}</td><td>${esc(items[0].supervisor)}</td></tr>`;
+      if (open) body += items.map(auditRow).join('');
+    });
+  }
+  return `<table id="agSumQa" class="nosort"><thead><tr><th>👤 Analyst Name</th><th>⭐ ${multi ? 'Avg Score' : 'Score'}</th><th>📋 Audits</th><th>📅 ${multi ? 'Latest ' : ''}Call Date</th><th>🧑‍💼 Supervisor</th></tr></thead><tbody>${body}</tbody></table>`;
 }
 
 function buildAgentSummary() {
@@ -4312,9 +4365,12 @@ function buildAgentSummary() {
   }</tbody></table>`
     : '<div class="my-lbl">No stack ranking data for this agent in the selected period.</div>';
 
+  agQaLast = { a, selYm, multi };
   box.innerHTML = `
     <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(periodLabel)}</small></div></div>
     <div class="stats sum-cards five" style="margin-bottom:16px">${cards}</div>
+    <h3 class="sum-h" style="margin-top:16px">Quality assurance</h3>
+    <div class="panel"><div class="schedule-container" id="agSumQaBox">${agSumQaHtml()}</div></div>
     <div class="sum-h-row"><h3 class="sum-h">Overall Metric Scorecard</h3><span id="agSumMonthSlot"></span></div>
     <div class="panel"><div class="schedule-container">${scores}</div></div>
     <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
