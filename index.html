@@ -402,6 +402,10 @@ html[data-theme=dark] #mcsTable td.kc-low,html[data-theme=dark] #agSumBody td.kc
 .qq-row:hover{background:var(--paper)}
 .qq-row.sel{background:color-mix(in srgb,var(--blue) 12%,transparent);box-shadow:inset 3px 0 0 var(--blue)}
 .qq-lab{font-weight:700}
+.qq-qt{grid-column:2 / -1;font-size:12px;line-height:1.3;opacity:.75;margin:-2px 0 3px}
+.qq-qfull{font-size:13px;line-height:1.35;margin:0 0 8px}
+.qq-qfull small{display:block;opacity:.7;margin-top:2px}
+.qd-qt{opacity:.7;font-size:12px}
 .qq-track{height:14px;background:var(--line);border-radius:7px;overflow:hidden}
 .qq-fill{height:100%;border-radius:7px;background:var(--red)}
 .qq-num{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -1364,6 +1368,7 @@ const URLS = {
   attTime: sheetUrl(417537234),            // "ATTENDANCE TIME" tab: Name | EST Date | Type | Actual Time
   announcements: sheetUrl(6259028),
   qa: scheduleUrl(337356668),              // "QA" tab (&headers=1 forces row 1 to be read as the header)
+  qaScoring: sheetUrl(340509074),          // "QA Scoring" tab: QA# | Question | Yes | No (the wording of Q1 - Q25)
   metric: sheetUrl(2096143764),            // "metric scorecard" tab (Performance Stack Ranking)
   agentScores: sheetUrl(1351966528),       // "agent" tab (Metric Scorecard: actual scores)
   daily: scheduleUrl(1383082920)           // "Schedule By Date" tab
@@ -1740,6 +1745,23 @@ const loadQA = () => guard('qa', "Couldn't load the QA tab", async () => {
   qaList = (await fetchCSV(URLS.qa, { need: 'Analyst Name' })).filter(r => String(r['Analyst Name'] ?? '').trim());
 });
 
+/* QA Scoring tab: QA# | Question | Yes | No  ->  the wording of each question (Q1 - Q25) plus its Yes / No scoring values */
+let qaQMap = new Map();
+const loadQAScoring = () => guard('qaScoring', "Couldn't load the QA Scoring tab", async () => {
+  const rows = await fetchCSV(URLS.qaScoring, { raw: true });
+  const h = rows.findIndex(r => r.some(c => /^qa\s*#?$/i.test(clean(c))));
+  if (h < 0) throw new Error('no "QA#" header found - check the tab gid and sharing');
+  const heads = rows[h].map(c => clean(c).toLowerCase());
+  const col = re => heads.findIndex(x => re.test(x));
+  const iN = col(/^qa\s*#?$/), iQ = col(/^question/), iY = col(/^yes$/), iNo = col(/^no$/);
+  const map = new Map();
+  rows.slice(h + 1).forEach(r => {
+    const m = clean(r[iN]).match(/\d+/); if (!m) return;                 // "Q5", "QAQ5", "5" -> 5
+    map.set(parseInt(m[0], 10), { text: iQ >= 0 ? clean(r[iQ]) : '', yes: iY >= 0 ? clean(r[iY]) : '', no: iNo >= 0 ? clean(r[iNo]) : '' });
+  });
+  qaQMap = map;
+});
+
 /* Metric tab: Month | Agent Name | ...scores... | TOTAL | Remarks | Supervisor
    The header row is the row that has an "Agent Name" cell. If a row above it holds weights, they are shown under the titles. */
 const loadMetric = () => guard('metric', "Couldn't load the Performance Stack Ranking tab", async () => {
@@ -1780,7 +1802,7 @@ async function refreshAttendanceData(notify = false, scores = true) {
   if (btn) { btn.disabled = true; btn.classList.add('spinning'); }
   try {
     await Promise.all([loadAttendance(), loadSchedules(), loadDaily(),
-      ...(scores ? [loadQA(), loadMetric(), loadMcs()] : []),
+      ...(scores ? [loadQA(), loadQAScoring(), loadMetric(), loadMcs()] : []),
       ...(notify && typeof loadDataUpdates === 'function' ? [loadDataUpdates()] : [])]);   // also re-read the "Data as of" dates
   } finally { if (btn) { btn.disabled = false; btn.classList.remove('spinning'); } }
   renderAll();
@@ -2746,6 +2768,8 @@ function buildQA() {
    Only Yes / No answers count; N/A and blank answers are skipped. "No %" = No / (Yes + No). Click a bar to see that question's trend. */
 let qqSel = null, qqAll = false, qqLast = { rows: [], trend: [] }, qqBound = false;
 const qaAnswerKind = v => { const s = String(v ?? '').trim().toLowerCase(); return /^(no|n)$/.test(s) ? 'no' : /^(yes|y)$/.test(s) ? 'yes' : ''; };
+const qaQInfo = label => qaQMap.get(parseInt(String(label).replace(/\D/g, ''), 10) || 0) || null;
+const qaQText = label => (qaQInfo(label) || {}).text || '';
 function qaQuestionStats(rows) {
   const m = new Map();
   rows.forEach(x => {
@@ -2766,7 +2790,8 @@ function qqTrendHtml(label) {
     const s = qaQuestionStats(byMonth.get(ym)).find(e => e.label === label);
     return { ym, no: s ? s.no : 0, tot: s ? s.tot : 0, rate: s && s.tot ? s.rate : null };
   });
-  const head = `<div class="qq-tt">${esc(label)} – “No” % by month</div>`;
+  const head = `<div class="qq-tt">${esc(label)} – “No” % by month</div>` +
+    (qaQText(label) ? `<div class="qq-qfull">${esc(qaQText(label))}${(qaQInfo(label).yes || qaQInfo(label).no) ? `<small>${[qaQInfo(label).yes && 'Yes: ' + qaQInfo(label).yes + ' pts', qaQInfo(label).no && 'Markdown (No): ' + qaQInfo(label).no + ' pts'].filter(Boolean).map(esc).join(' · ')}</small>` : ''}</div>` : '');
   const have = pts.filter(p => p.rate != null);
   if (!have.length) return head + '<div class="qq-note">No Yes / No answers for this question yet.</div>';
   const W = 320, H = 180, L = 34, R = 12, T = 18, B = 34, n = pts.length;
@@ -2807,6 +2832,7 @@ function buildQaQuestions(rows, trend) {
       <span class="qq-lab">${esc(s.label)}</span>
       <span class="qq-track"><span class="qq-fill" style="display:block;width:${Math.max(2, (mode === 'rate' ? s.rate : s.no) / max * 100)}%"></span></span>
       <span class="qq-num"><b>${s.no}</b> No · ${s.rate.toFixed(0)}%</span>
+      ${qaQText(s.label) ? `<span class="qq-qt">${esc(qaQText(s.label))}</span>` : ''}
     </div>`).join('');
   $('qqTrend').innerHTML = qqTrendHtml(qqSel);
 }
@@ -2854,7 +2880,7 @@ function openQaDetail(id) {
         ${f.typeH ? line('QA Type', raw[f.typeH]) : ''}
         <div class="qd-line"><b>Score:</b> ${scoreHtml}</div>
       </div>
-      ${f.qs.length ? `<div class="qd-grp">${f.qs.map(q => line(q.label, q.value)).join('')}</div>` : ''}
+      ${f.qs.length ? `<div class="qd-grp">${f.qs.map(q => line(q.label, q.value).replace(/<\/div>$/, qaQText(q.label) ? ` <span class="qd-qt">– ${esc(qaQText(q.label))}</span></div>` : '</div>')).join('')}</div>` : ''}
       <div class="qd-grp"><div class="qd-line"><b>Notes:</b> ${notes ? '' : '<span class="none">—</span>'}</div>${notes ? `<div class="qd-notes">${esc(notes)}</div>` : ''}</div>
       ${f.byH ? `<div class="qd-grp">${line('Submitted By', raw[f.byH])}</div>` : ''}
     </div></div>`;
@@ -4550,7 +4576,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('trackerMonth').value = today.slice(0, 7);
   showTab('summaryTab');           // landing page
 
-  await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadMetric(), loadMcs()]);
+  await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadQAScoring(), loadMetric(), loadMcs()]);
   renderAll();
   showTabFromHash();
 
