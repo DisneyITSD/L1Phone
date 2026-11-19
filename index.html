@@ -4437,15 +4437,15 @@ function buildAgentSummary() {
   box.innerHTML = `
     <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(periodLabel)}</small></div></div>
     <div class="stats sum-cards five" style="margin-bottom:16px">${cards}</div>
+    <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
+    <div class="panel"><div class="schedule-container">${stack}</div></div>
+    <h3 class="sum-h">Overall Metric Scorecard</h3>
+    <div class="panel"><div class="schedule-container">${scores}</div></div>
+    <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span></div>
     <h3 class="sum-h" style="margin-top:16px">Quality assurance</h3>
     <div class="panel"><div class="schedule-container" id="agSumQaBox">${agSumQaHtml()}</div></div>
     <div class="panel qq yes"><div class="qq-head"><b>📈 What went well</b><span class="qq-sub" id="sySub"></span><div class="qq-ctl"><button type="button" id="syMore" onclick="qqToggle('syes')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="syBars" data-qq="syes"></div><div class="qq-trend" id="syTrend"></div></div></div>
-    <div class="panel qq"><div class="qq-head"><b>📉 What went wrong</b><span class="qq-sub" id="sqSub"></span><div class="qq-ctl"><button type="button" id="sqMore" onclick="qqToggle('sno')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="sqBars" data-qq="sno"></div><div class="qq-trend" id="sqTrend"></div></div></div>
-    <h3 class="sum-h">Overall Metric Scorecard</h3>
-    <div class="panel"><div class="schedule-container">${scores}</div></div>
-    <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
-    <div class="panel"><div class="schedule-container">${stack}</div></div>
-    <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span></div>`;
+    <div class="panel qq"><div class="qq-head"><b>📉 What went wrong</b><span class="qq-sub" id="sqSub"></span><div class="qq-ctl"><button type="button" id="sqMore" onclick="qqToggle('sno')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="sqBars" data-qq="sno"></div><div class="qq-trend" id="sqTrend"></div></div></div>`;
 
 
   /* Schedule calendar for the same agent. The month follows the latest ticked month whenever the agent or months change;
