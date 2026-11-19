@@ -207,6 +207,9 @@ html[data-theme=dark] #agSumQa tr.qa-audit td:first-child{color:#aab4c4}
 .qd-line .v{white-space:pre-wrap}
 .qd-line .none{color:var(--muted,#6b7280)}
 .qd-notes{margin-top:4px;padding:10px 12px;border-radius:8px;background:var(--paper,#f6f7f9);white-space:pre-wrap;overflow-wrap:anywhere}
+.qd-notes .qd-nb{white-space:normal;margin:0 0 12px;line-height:1.45}
+.qd-notes .qd-nb:last-child{margin-bottom:0}
+.qd-notes .qd-nb>div{margin:2px 0}
 .qd-score{font-weight:700}
 .qd-score.sc-good{color:var(--green,#16a34a)}
 .qd-score.sc-mid{color:var(--orange,#d97706)}
@@ -1284,7 +1287,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       <b>📉 Questions answered “No”</b>
       <span class="qq-sub" id="qqSub"></span>
       <div class="qq-ctl">
-        <select id="qqSort" onchange="buildQaQuestions()"><option value="count">Number of “No” answers</option><option value="rate">Highest “No” %</option></select>
+        <input type="hidden" id="qqSort" value="count">
         <button type="button" id="qqMore" onclick="qqToggle()">Show all</button>
       </div>
     </div>
@@ -2875,6 +2878,18 @@ function qaDetailFields(raw) {
   const label = h => /^\s*(qaq|q|question)\s*[#.\-:]?\s*\d+\s*$/i.test(h) ? 'Q' + h.match(/\d+/)[0] : h.trim();
   return { typeH, byH, qs: qs.map(h => ({ label: label(h), value: raw[h] })) };
 }
+/* Notes in the audit details: one line per sentence, a new block at each "QAQ3" / "QAQ9" marker, links on their own line */
+function qaNotesHtml(s) {
+  const txt = String(s ?? '').replace(/\r/g, '').trim();
+  const abbr = /^(e\.g|i\.e|etc|vs|mr|mrs|ms|dr|approx)\.$|^\d+\.$/i;               // a full stop here does not end a sentence
+  const sentences = seg => seg.replace(/([.!?]["”')\]]*)\s+(?=["“'(]?[A-Z0-9])/g, (m, p, off) => {
+    const w = (seg.slice(0, off + 1).match(/(\S+)$/) || [''])[0];
+    return abbr.test(w) ? m : p + '\n';
+  }).split('\n').map(x => x.trim()).filter(Boolean);
+  return txt.replace(/(^|\s+)(?=QAQ\d+\b)/g, '\n\n').replace(/[ \t]+(?=https?:\/\/)/g, '\n').split(/\n{2,}/).map(b => b.trim()).filter(Boolean).map(block =>
+    `<div class="qd-nb">${block.split('\n').flatMap(sentences).map(l => `<div>${esc(l).replace(/^(QAQ\d+)\b/, '<b>$1</b>')}</div>`).join('')}</div>`
+  ).join('');
+}
 function openQaDetail(id) {
   const raw = qaList[id];
   if (!raw) return;
@@ -2903,7 +2918,7 @@ function openQaDetail(id) {
         <div class="qd-line"><b>Score:</b> ${scoreHtml}</div>
       </div>
       ${f.qs.length ? `<div class="qd-grp">${f.qs.map(q => line(q.label, q.value).replace(/<\/div>$/, qaQText(q.label) ? ` <span class="qd-qt">– ${esc(qaQText(q.label))}</span></div>` : '</div>')).join('')}</div>` : ''}
-      <div class="qd-grp"><div class="qd-line"><b>Notes:</b> ${notes ? '' : '<span class="none">—</span>'}</div>${notes ? `<div class="qd-notes">${esc(notes)}</div>` : ''}</div>
+      <div class="qd-grp"><div class="qd-line"><b>Notes:</b> ${notes ? '' : '<span class="none">—</span>'}</div>${notes ? `<div class="qd-notes">${qaNotesHtml(notes)}</div>` : ''}</div>
       ${f.byH ? `<div class="qd-grp">${line('Submitted By', raw[f.byH])}</div>` : ''}
     </div></div>`;
   back.hidden = false;
