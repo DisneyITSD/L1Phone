@@ -440,9 +440,6 @@ html[data-theme=dark] .qq-crit.no b{color:#f87171}
 .qq-txt{fill:var(--muted);font-size:10px}
 .qq-val{fill:var(--ink);font-size:10px;font-weight:600}
 .qq-note{color:var(--muted);font-size:12px;margin-top:6px}
-.qq.yes .qq-fill{background:var(--green)}
-.qq.yes .qq-line{stroke:var(--green)}
-.qq.yes .qq-dot{fill:var(--green)}
 </style>
 <script>(function(){try{var m=localStorage.getItem('ditsc_theme')||'system';document.documentElement.dataset.theme=(m==='dark'||(m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))?'dark':'light'}catch(e){}})()</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
@@ -705,8 +702,6 @@ html[data-theme=dark] .lc-0{--c:#9ca3af;--bg:#1b2331}html[data-theme=dark] .lc-1
 html[data-theme=dark] .side-toggle:hover{background:#1e2735}
 .page-head #refreshBtn{width:36px;height:36px;padding:0;display:grid;place-items:center;font-size:18px;line-height:1}
 
-/* Agent file: single calendar view with an agent summary strip */
-#rosterView,#rosterTab .daily-summary,#rosterLegend{display:none}
 .sum-h-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:32px 0 12px}
 .sum-h-row .sum-h{margin:0}
 .agent-sum{display:grid;grid-template-columns:minmax(210px,auto) minmax(210px,auto) 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:18px;overflow:hidden}
@@ -874,7 +869,6 @@ html[data-theme=dark] .flag-chip{background:#4a3a0c;color:#fde68a}
 html[data-theme=dark] .flag-chip.red{background:#4c1d22;color:#fca5a5}
 /* agent-only layout rules */
 #supervisorSummaryCards,#dailyOverviewCards{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-#rosterView,#rosterSupervisor,#rosterTab .daily-summary,#rosterLegend{display:none}
 /* "Data as of" note (filled from the Updates tab) */
 #dataUpdateNote{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:12px 16px;border-radius:14px;border:1px solid #c7d7fb;background:linear-gradient(100deg,#eaf1ff 0%,#f4f0ff 100%);box-shadow:0 2px 10px rgba(47,91,234,.10);color:#1f2a44;font-size:13.5px;line-height:1.45;animation:duIn .35s ease-out both}
 #dataUpdateNote[hidden]{display:none}
@@ -1065,16 +1059,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       <div class="vm-sec">💡 Calendar colors indicate attendance status (Present, Late/Left Early, Called Off/NCNS, Leave, OFF, and Upcoming).</div>
     </div>
   </details>
-    <div style="display:none" aria-hidden="true">
-      <select id="rosterView"><option value="calendar">Agent calendar</option><option value="grid">All agents (grid)</option></select>
-      <select id="rosterSupervisor"><option>All Supervisors</option></select>
-      <select id="rosterAgent"></select>
-      <input type="text" id="rosterSearch">
-      <input type="checkbox" id="rosterChangedOnly">
-      <span id="rosterCount"></span><span id="rosterChangeCount"></span><span id="rosterAttAvg"></span>
-      <div id="rosterLegend"></div>
-      <div id="rosterGridWrap"><table id="rosterTable"><thead></thead><tbody></tbody></table></div>
-    </div>
     </div>
   </div>
   <div id="agSumMonthPark" class="sum-h-row" style="margin:20px 0 0;justify-content:flex-start" hidden>
@@ -1236,38 +1220,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   </div>
 </section>
 
-<!-- ============ SCORECARD: ATTENDANCE ============ -->
-<section class="tab-panel" id="trackerTab" hidden>
-  <div class="view-hint">🗓️ Per-agent attendance for the month: ✔ present, ◐ late / left early, ✖ called off, leave or OFF.<br>Click an agent's name in the grid to open their calendar.</div>
-  <div class="controls">
-    <button type="button" onclick="shiftTrackerMonth(-1)" title="Previous month">‹</button>
-    <input type="month" id="trackerMonth" onchange="buildTracker()">
-    <button type="button" onclick="shiftTrackerMonth(1)" title="Next month">›</button>
-    <select id="trackerView" onchange="buildTracker()">
-      <option value="grid">All agents (grid)</option>
-      <option value="calendar">Agent calendar</option>
-    </select>
-    <select id="trackerSupervisor" onchange="buildTracker()"><option>All Supervisors</option></select>
-    <select id="trackerAgent" onchange="buildTracker()"></select>
-    <input type="text" id="trackerSearch" placeholder="🔍 Search Agent..." onkeyup="buildTracker()">
-    <button type="button" class="blue" id="trackerDownloadBtn" onclick="downloadTracker()">⬇ Download CSV</button>
-  </div>
-  <div class="trk-info" id="trackerLegend"></div>
-  <div id="trackerBody"></div>
-  <details class="view-more"><summary>ℹ️ How attendance is calculated</summary>
-    <div class="view-hint">
-      <div class="vm-sec"><b>📊 Attendance Information</b></div>
-      <div class="vm-sec">⏰ Actual log-in / log-out times are sourced from the LOLI Actual sheet. 📝 Late/Early Time Form submissions take priority, and ✅ approved disputes override previous records.</div>
-      <div class="vm-sec">📈 Attendance % = Hours Worked ÷ Hours Expected, using the same rules as the Performance → Attendance Tracker.</div>
-      <div class="vm-sec">⏱️ Hours Worked = the lower of (Shift Length − Minutes Late − Minutes Left Early) and the total logged-in hours.</div>
-      <div class="vm-sec">🕒 Only time between the scheduled shift start and end counts. Every minute late or left early reduces the hours; the 10-minute grace period only decides the Late / Left Early / Short Hours tag.</div>
-      <div class="vm-sec">🚫 Leave, OFF, and Upcoming days are excluded from the Attendance % calculation.</div>
-      <div class="vm-sec">❌ Called Off and NCNS count as expected hours with 0 hours worked.</div>
-      <div class="vm-sec">📅 Calendar colors indicate each day's attendance status.</div>
-      <div class="vm-sec">💡 Hover over a day to view the scheduled shift and actual log-in/log-out details.</div>
-    </div>
-  </details>
-</section>
 
 <!-- ============ SCORECARD: QUALITY ASSURANCE ============ -->
 <section class="tab-panel" id="qaTab" hidden>
@@ -1278,6 +1230,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       <div class="msel-panel" id="qaMonthPanel" hidden></div>
     </div>
     <select id="qaSupervisor" onchange="buildQA()"><option>All Supervisors</option></select>
+    <input type="text" id="qaSearch" placeholder="🔍 Search analyst or ticket..." onkeyup="buildQA()" style="width:280px">
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
   </div>
   <div class="daily-summary">
@@ -1287,30 +1240,16 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   </div>
   <div class="podium" id="qaPodium"></div>
   <div class="trk-legend" id="qaLegend"></div>
-  <div class="panel qq yes" id="qaWell">
-    <div class="qq-head">
-      <b>📈 What went well</b>
-      <span class="qq-sub" id="qySub"></span>
-      <div class="qq-ctl">
-        <button type="button" id="qyMore" onclick="qqToggle('yes')">Show all</button>
-      </div>
-    </div>
-    <div class="qq-body">
-      <div class="qq-bars" id="qyBars" data-qq="yes"></div>
-      <div class="qq-trend" id="qyTrend"></div>
-    </div>
-  </div>
   <div class="panel qq" id="qaQuestions">
     <div class="qq-head">
-      <b>📉 What went wrong</b>
+      <b>📉 Questions answered “No”</b>
       <span class="qq-sub" id="qqSub"></span>
       <div class="qq-ctl">
-        <input type="hidden" id="qqSort" value="count">
-        <button type="button" id="qqMore" onclick="qqToggle('no')">Show all</button>
+        <button type="button" id="qqMore" onclick="qqToggle()">Show all</button>
       </div>
     </div>
     <div class="qq-body">
-      <div class="qq-bars" id="qqBars" data-qq="no"></div>
+      <div class="qq-bars" id="qqBars"></div>
       <div class="qq-trend" id="qqTrend"></div>
     </div>
   </div>
@@ -1859,7 +1798,6 @@ const TAB_RENDERERS = {
   ptoTab: () => buildRecordTable('pto'),
   calledOffTab: () => buildRecordTable('att'),
   lateTab: buildLateTable,
-  trackerTab: buildTracker,
   qaTab: buildQA,
   metricTab: buildMetric,
   mcsTab: buildMcs,
@@ -1877,7 +1815,7 @@ function renderAll() {
 
 function loadSup() {
   const options = `<option>${ALL}</option>` + uniqueSupervisors().map(s => `<option>${esc(s)}</option>`).join('');
-  ['scheduleSupervisor', 'ptoSupervisor', 'calledOffSupervisor', 'lateSupervisor', 'rosterSupervisor', 'trackerSupervisor', 'teamSupervisor', 'sumSupervisor']
+  ['scheduleSupervisor', 'ptoSupervisor', 'calledOffSupervisor', 'lateSupervisor', 'teamSupervisor', 'sumSupervisor']
     .forEach(id => {
       const el = $(id), prev = el.value;
       el.innerHTML = options;
@@ -2323,22 +2261,6 @@ function buildScheduleView() {
    Weekly roster = baseline. "Schedule By Date" overrides it per day.
    A day is "changed" when the dated shift differs from the weekly roster.
    ===================================================================== */
-function phHHMM(date, mins) {
-  const m = phTime(date, mins).match(/(\d+):(\d+)\s*([AP])M/i);
-  if (!m) return '';
-  let h = +m[1] % 12; if (m[3].toUpperCase() === 'P') h += 12;
-  return pad(h) + ':' + m[2];
-}
-
-/* "07:00" -> "7AM", "18:30" -> "6:30PM" */
-const short12 = hhmm => { const [h, m] = hhmm.split(':').map(Number); return `${h % 12 || 12}${m ? ':' + pad(m) : ''}${h >= 12 ? 'PM' : 'AM'}`; };
-
-function rosterPick(name) {
-  $('rosterView').value = 'calendar';
-  $('rosterAgent').value = name;
-  buildRosterView();
-}
-
 /* Day counts for the month: Present, Late, Left early, Short hours, Called off (NCNS) and Leave */
 function attChipsHtml(info, c) {
   const n = f => info.filter(f).length;
@@ -2418,6 +2340,7 @@ function shiftRosterMonth(delta) {
   buildRosterView();
 }
 
+let rosterAgentName = '';   // the agent whose calendar is showing (set by Agent Summary)
 function buildRosterView(agent) {
   let ym = $('rosterMonth').value;
   if (!ym) { ym = ymd(estNow()).slice(0, 7); $('rosterMonth').value = ym; }
@@ -2425,8 +2348,6 @@ function buildRosterView(agent) {
   const days = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
   const today = ymd(estNow());
   const ph = $('rosterTimezone').value === 'PH';
-  const sup = $('rosterSupervisor').value, q = up($('rosterSearch').value);
-  const onlyChanged = $('rosterChangedOnly').checked;
 
   const viewToday = ph ? ymd(new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }))) : today;
   const calc = ph ? [addDays(days[0], -1), ...days, addDays(days[days.length - 1], 1)] : days;   // PH view needs the neighbouring EST days
@@ -2445,68 +2366,26 @@ function buildRosterView(agent) {
         att: attendanceFor(r, date, today, idx)
       };
     }), ph, days)
-  })).filter(x =>
-    (!q || up(x.r.Name).includes(q)) &&
-    (sup === ALL || x.cells.some(c => c.sup === sup)) &&
-    (!onlyChanged || x.cells.some(c => c.shiftChg || c.supChg)))
-    .sort((a, b) => a.r.Name.localeCompare(b.r.Name));
+  })).sort((a, b) => a.r.Name.localeCompare(b.r.Name));
   /* Attendance numbers always use the EST month (same as Scorecard > Attendance), even when the days are shown in PH time */
   data.forEach(x => { x.est = ph ? days.map(date => attendanceFor(x.r, date, today, idx)) : x.cells.map(c => c.att); });
 
-  const view = $('rosterView').value, sel = $('rosterAgent'), prevAgent = typeof agent === 'string' && agent ? agent : sel.value;
-  sel.innerHTML = data.map(x => `<option value="${esc(x.r.Name)}">${esc(x.r.Name)}</option>`).join('');
-  if (data.some(x => x.r.Name === prevAgent)) sel.value = prevAgent;
-  sel.hidden = view !== 'calendar';
-  $('rosterCal').hidden = view !== 'calendar';
-  $('rosterGridWrap').hidden = view === 'calendar';
+  const wanted = typeof agent === 'string' && agent ? agent : rosterAgentName;
+  const ag = data.find(x => x.r.Name === wanted) || data[0];   // falls back to the first agent, like the old hidden picker did
+  rosterAgentName = ag ? ag.r.Name : '';
 
-  const dow = 'SMTWTFS';
-  $('rosterTable').tHead.innerHTML = '<tr><th>👤 Agent</th><th title="Schedule changes">🔁</th><th title="Attendance % (hours worked / expected)">%</th>' + days.map(d => {
-    const dt = parseYMD(d);
-    return `<th class="${d === viewToday ? 'today' : ''}">${dt.getDate()}<br><small>${dow[dt.getDay()]}</small></th>`;
-  }).join('') + '</tr>';
+  $('rosterCal').innerHTML = ag ? rosterCalendarHtml(ag, viewToday, ph) : '<div class="empty" style="--c:#6c757d">No agents found</div>';
 
   const changes = [];
-  $('rosterTable').tBodies[0].innerHTML = data.map(({ r, cells, est }) => {
-    const chg = cells.filter(c => c.shiftChg || c.supChg);
-    chg.forEach(c => changes.push({ name: r.Name, ...c }));
-    const sum = trackerSummary(est);
-    const tds = cells.map(c => {
-      const p = parseShift(c.shift), off = !p;
-      const len = p ? (p[1] <= p[0] ? p[1] + 1440 - p[0] : p[1] - p[0]) : 0;
-      const text = off ? 'OFF' : ph ? `${short12(phHHMM(c.estDate || c.date, p[0]))}-${short12(phHHMM(c.estDate || c.date, p[1]))}` : `${short12(toHHMM(p[0]))}-${short12(toHHMM(p[1]))}`;
-      const tip = `${ph && c.estDate ? 'PH ' : ''}${fmtDate(parseYMD(c.date))}${ph && c.estDate ? ' (EST shift date ' + fmtDate(parseYMD(c.estDate)) + ')' : ''} · ` + (off ? 'OFF' : `${convertShiftRange(c.shift)} EST · ${phRange(c.estDate || c.date, p[0], len)} PH`) +
-        (c.shiftChg ? ` · CHANGED (weekly roster: ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)})` : '') +
-        (c.supChg ? ` · supervisor: ${c.sup}` : '') + ` · ${c.att.text}` + (c.att.missed ? ` · ${missedText(c.att)}` : '');
-      const a = c.att, mark = a.kind === 'present' ? '✔' : a.kind === 'upcoming' ? '○' : a.kind === 'off' ? '' : a.code + (a.estimated ? '*' : '');
-      return `<td class="trk-cell rcell st-${a.kind}${c.shiftChg ? ' chg-out' : ''}" title="${esc(tip)}">${text}${mark ? `<small>${esc(mark)}</small>` : ''}</td>`;
-    }).join('');
-    return `<tr class="${supClass(r.Supervisor)}" style="${supStyle(r.Supervisor)}">
-      <td class="trk-name" data-agent="${esc(r.Name)}" title="Open calendar" onclick="rosterPick(this.dataset.agent)">${esc(r.Name)}</td><td class="trk-sum">${chg.length}</td><td class="trk-sum" title="Hours worked / expected">${trackerPct(sum)}</td>${tds}</tr>`;
-  }).join('') || `<tr><td>No agents found</td></tr>`;
-
-  if (view === 'calendar') {
-    const ag = data.find(x => x.r.Name === sel.value);
-    $('rosterCal').innerHTML = ag ? rosterCalendarHtml(ag, viewToday, ph) : '<div class="empty" style="--c:#6c757d">No agents found</div>';
-  }
+  if (ag) ag.cells.forEach(c => { if (c.shiftChg || c.supChg) changes.push({ name: ag.r.Name, ...c }); });
   changes.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
-  const shownChanges = view === 'calendar' ? changes.filter(c => c.name === sel.value) : changes;
   const sh = s => isOff(s) ? 'OFF' : convertShiftRange(s);
-  $('rosterChanges').tBodies[0].innerHTML = shownChanges.length ? shownChanges.map(c => `
+  $('rosterChanges').tBodies[0].innerHTML = changes.length ? changes.map(c => `
     <tr class="${supClass(c.sup)}" style="${supStyle(c.sup)}">
       <td>${esc(c.name)}</td><td>${fmtDate(parseYMD(c.date))}</td>
       <td>${sh(c.base)}</td><td><strong>${sh(c.shift)}</strong></td>
       <td>${esc(c.sup)}${c.supChg ? ' 🔁' : ''}</td></tr>`).join('')
     : '<tr><td colspan="5">No schedule changes this month</td></tr>';
-
-  const scope = view === 'calendar' ? data.filter(x => x.r.Name === sel.value) : data;
-  const hw = scope.reduce((t, x) => t + x.est.reduce((a, e) => a + e.worked, 0), 0);
-  const he = scope.reduce((t, x) => t + x.est.reduce((a, e) => a + e.exp, 0), 0);
-  $('rosterAttAvg').textContent = he ? (hw / he * 100).toFixed(1) + '%' : '—';
-  $('rosterLegend').innerHTML = TRACKER_LEGEND.map(([k, t]) => `<span class="trk-chip st-${k}">${t}</span>`).join('') +
-    '<span class="trk-chip info" style="box-shadow:inset 0 0 0 2px #7c4dff">🔁 Schedule changed from weekly roster</span>';
-  $('rosterCount').textContent = data.length;
-  $('rosterChangeCount').textContent = shownChanges.length;
 }
 
 /* =====================================================================
@@ -2720,10 +2599,10 @@ function buildQA() {
   const sups = [...new Set(picked.map(x => x.supervisor).filter(Boolean))].sort();
   supSel.innerHTML = `<option>${ALL}</option>` + sups.map(s => `<option>${esc(s)}</option>`).join('');
   if (sups.includes(prevSup)) supSel.value = prevSup;
-  const sup = supSel.value;
+  const sup = supSel.value, q = up($('qaSearch').value);
 
   const rows = picked
-    .filter(x => sup === ALL || x.supervisor === sup)
+    .filter(x => (sup === ALL || x.supervisor === sup) && (!q || up(`${x.analyst} ${x.ticket}`).includes(q)))
     .sort((a, b) => b.date.localeCompare(a.date) || a.analyst.localeCompare(b.analyst));
 
   const avgOf = list => {
@@ -2800,21 +2679,13 @@ function buildQA() {
   $('qaAgents').textContent = list.length;
   $('qaCount').textContent = rows.length;
   $('qaAvg').textContent = fmtScore(avgOf(rows));
-  buildQaQuestions(rows, all.filter(x => sup === ALL || x.supervisor === sup));
+  buildQaQuestions(rows, all.filter(x => (sup === ALL || x.supervisor === sup) && (!q || up(`${x.analyst} ${x.ticket}`).includes(q))));
 }
 
 /* ---------- QA: which questions (Q1 - Q25) are answered "No" the most, and how that moves month by month ----------
    Follows the QA filters: the bars use the ticked months + supervisor + search; the trend line uses every month (same supervisor + search).
    Only Yes / No answers count; N/A and blank answers are skipped. "No %" = No / (Yes + No). Click a bar to see that question's trend. */
-/* Panels: What went wrong (No) / What went well (Yes). Scope 'qa' = Quality Assurance tab, 'sum' = Agent Summary page. p = id prefix of the panel's elements */
-const qqUi = {
-  no:   { p: 'qq', kind: 'no',  scope: 'qa',  sel: null, all: false, word: 'No' },
-  yes:  { p: 'qy', kind: 'yes', scope: 'qa',  sel: null, all: false, word: 'Yes' },
-  sno:  { p: 'sq', kind: 'no',  scope: 'sum', sel: null, all: false, word: 'No' },
-  syes: { p: 'sy', kind: 'yes', scope: 'sum', sel: null, all: false, word: 'Yes' }
-};
-const qqData = { qa: { rows: [], trend: [] }, sum: { rows: [], trend: [] } };
-let qqBound = false;
+let qqSel = null, qqAll = false, qqLast = { rows: [], trend: [] }, qqBound = false;
 const qaAnswerKind = v => { const s = String(v ?? '').trim().toLowerCase(); return /^(no|n)$/.test(s) ? 'no' : /^(yes|y)$/.test(s) ? 'yes' : ''; };
 const qaQInfo = label => qaQMap.get(parseInt(String(label).replace(/\D/g, ''), 10) || 0) || null;
 const qaLines = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);      // one entry per line of a sheet cell
@@ -2830,19 +2701,18 @@ function qaQuestionStats(rows) {
       m.get(q.label)[k]++;
     });
   });
-  return [...m.values()].map(e => ({ ...e, tot: e.no + e.yes, rate: e.no + e.yes ? e.no / (e.no + e.yes) * 100 : 0, yrate: e.no + e.yes ? e.yes / (e.no + e.yes) * 100 : 0 }));
+  return [...m.values()].map(e => ({ ...e, tot: e.no + e.yes, rate: e.no + e.yes ? e.no / (e.no + e.yes) * 100 : 0 }));
 }
-function qqToggle(key) { qqUi[key].all = !qqUi[key].all; qqRender(qqUi[key].scope); }
-function qqTrendHtml(label, key) {
-  const U_ = qqUi[key], kind = U_.kind, W_ = U_.word;
+function qqToggle() { qqAll = !qqAll; buildQaQuestions(); }
+function qqTrendHtml(label) {
   const byMonth = new Map();
-  qqData[U_.scope].trend.forEach(x => { if (!byMonth.has(x.ym)) byMonth.set(x.ym, []); byMonth.get(x.ym).push(x); });
+  qqLast.trend.forEach(x => { if (!byMonth.has(x.ym)) byMonth.set(x.ym, []); byMonth.get(x.ym).push(x); });
   const pts = [...byMonth.keys()].sort().map(ym => {
     const s = qaQuestionStats(byMonth.get(ym)).find(e => e.label === label);
-    return { ym, cnt: s ? s[kind] : 0, tot: s ? s.tot : 0, rate: s && s.tot ? (kind === 'no' ? s.rate : s.yrate) : null };
+    return { ym, no: s ? s.no : 0, tot: s ? s.tot : 0, rate: s && s.tot ? s.rate : null };
   });
   const qi = qaQInfo(label);
-  const head = `<div class="qq-tt">${esc(label)} – “${W_}” % by month</div>` +
+  const head = `<div class="qq-tt">${esc(label)} – “No” % by month</div>` +
     (qi && qi.text ? `<div class="qq-qfull">${qaLines(qi.text).map(esc).join('<br>')}</div>` + qaCritHtml('✅ YES:', qi.yes, 'yes') + qaCritHtml('❌ NO:', qi.no, 'no') : '');
   const have = pts.filter(p => p.rate != null);
   if (!have.length) return head + '<div class="qq-note">No Yes / No answers for this question yet.</div>';
@@ -2853,56 +2723,40 @@ function qqTrendHtml(label, key) {
   const grid = [0, yMax / 2, yMax].map(v => `<line class="qq-grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="qq-txt" x="${L - 5}" y="${Y(v) + 3}" text-anchor="end">${v}%</text>`).join('');
   const line = have.length > 1 ? `<polyline class="qq-line" points="${pts.map((p, i) => p.rate == null ? '' : X(i) + ',' + Y(p.rate)).filter(Boolean).join(' ')}"/>` : '';
   const dots = pts.map((p, i) => p.rate == null ? '' :
-    `<circle class="qq-dot" cx="${X(i)}" cy="${Y(p.rate)}" r="3.5"><title>${esc(mlab(p.ym))}: ${p.cnt} ${W_} of ${p.tot} answered (${p.rate.toFixed(1)}%)</title></circle>` +
+    `<circle class="qq-dot" cx="${X(i)}" cy="${Y(p.rate)}" r="3.5"><title>${esc(mlab(p.ym))}: ${p.no} No of ${p.tot} answered (${p.rate.toFixed(1)}%)</title></circle>` +
     `<text class="qq-val" x="${X(i)}" y="${Y(p.rate) - 8}" text-anchor="middle">${p.rate.toFixed(0)}%</text>`).join('');
   const step = Math.ceil(n / 7);
   const xl = pts.map((p, i) => i % step ? '' : `<text class="qq-txt" x="${X(i)}" y="${H - 14}" text-anchor="middle">${esc(mlab(p.ym))}</text>`).join('');
   const last = have[have.length - 1], prev = have[have.length - 2];
   const delta = prev ? ` · ${last.rate - prev.rate >= 0 ? '+' : ''}${(last.rate - prev.rate).toFixed(1)} pts vs ${mlab(prev.ym)}` : '';
-  return head + `<svg class="qq-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)} ${W_} percentage by month">${grid}${line}${dots}${xl}</svg>` +
-    `<div class="qq-note">${esc(mlab(last.ym))}: ${last.cnt} ${W_} of ${last.tot} answered (${last.rate.toFixed(1)}%)${delta}</div>`;
+  return head + `<svg class="qq-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)} No percentage by month">${grid}${line}${dots}${xl}</svg>` +
+    `<div class="qq-note">${esc(mlab(last.ym))}: ${last.no} No of ${last.tot} answered (${last.rate.toFixed(1)}%)${delta}</div>`;
 }
 function buildQaQuestions(rows, trend) {
-  if (rows) qqData.qa = { rows, trend: trend || rows };
-  qqRender('qa');
-}
-/* Agent Summary: the same two panels for one agent (rows = the ticked months, trend = every month) */
-function buildSumQuestions(rows, trend) {
-  qqData.sum = { rows, trend: trend || rows };
-  qqRender('sum');
-}
-function qqRender(scope) {
+  if (rows) qqLast = { rows, trend: trend || rows };
   if (!qqBound) {
-    qqBound = true;       // one listener for every panel: a click on a bar picks that question for that panel's monthly trend
-    document.addEventListener('click', e => {
-      const r = e.target.closest('.qq-row'), host = r && r.closest('[data-qq]');
-      if (!host) return;
-      const u = qqUi[host.dataset.qq]; u.sel = r.dataset.q; qqRender(u.scope);
-    });
+    qqBound = true;
+    $('qqBars').addEventListener('click', e => { const r = e.target.closest('.qq-row'); if (r) { qqSel = r.dataset.q; buildQaQuestions(); } });
   }
-  const data = qqData[scope], allStats = qaQuestionStats(data.rows);
-  Object.entries(qqUi).filter(([, u]) => u.scope === scope).forEach(([key, u]) => {
-    const kind = u.kind, stats = allStats.slice(), rateOf = s => kind === 'no' ? s.rate : s.yrate, W_ = u.word;
-    if (!$(u.p + 'Bars')) return;          // that panel is not on the page right now
-    stats.sort((a, b) => b[kind] - a[kind] || rateOf(b) - rateOf(a) || a.n - b.n);
-    $(u.p + 'Sub').textContent = `${data.rows.length} audit${data.rows.length === 1 ? '' : 's'} · N/A and blank answers are skipped`;
-    $(u.p + 'More').hidden = stats.length <= 10;
-    $(u.p + 'More').textContent = u.all ? 'Show top 10' : `Show all ${stats.length}`;
-    if (!stats.length) {
-      $(u.p + 'Bars').innerHTML = '<div class="qq-note">No Yes / No answers found in the question columns for these filters.</div>';
-      $(u.p + 'Trend').innerHTML = ''; return;
-    }
-    if (!u.sel || !stats.some(s => s.label === u.sel)) u.sel = stats[0].label;
-    const shown = u.all ? stats : stats.slice(0, 10), max = Math.max(...shown.map(s => s[kind])) || 1;
-    $(u.p + 'Bars').innerHTML = shown.map(s => `
-    <div class="qq-row${s.label === u.sel ? ' sel' : ''}" data-q="${esc(s.label)}" title="${s[kind]} ${W_} of ${s.tot} answered (${rateOf(s).toFixed(1)}%) – click for the monthly trend">
+  const stats = qaQuestionStats(qqLast.rows);
+  stats.sort((a, b) => b.no - a.no || b.rate - a.rate || a.n - b.n);   // most "No" answers first
+  $('qqSub').textContent = `${qqLast.rows.length} audit${qqLast.rows.length === 1 ? '' : 's'} · N/A and blank answers are skipped`;
+  $('qqMore').hidden = stats.length <= 10;
+  $('qqMore').textContent = qqAll ? 'Show top 10' : `Show all ${stats.length}`;
+  if (!stats.length) {
+    $('qqBars').innerHTML = '<div class="qq-note">No Yes / No answers found in the question columns for these filters.</div>';
+    $('qqTrend').innerHTML = ''; return;
+  }
+  if (!qqSel || !stats.some(s => s.label === qqSel)) qqSel = stats[0].label;
+  const shown = qqAll ? stats : stats.slice(0, 10), max = Math.max(...shown.map(s => mode === 'rate' ? s.rate : s.no)) || 1;
+  $('qqBars').innerHTML = shown.map(s => `
+    <div class="qq-row${s.label === qqSel ? ' sel' : ''}" data-q="${esc(s.label)}" title="${s.no} No of ${s.tot} answered (${s.rate.toFixed(1)}%) – click for the monthly trend">
       <span class="qq-lab">${esc(s.label)}</span>
-      <span class="qq-track"><span class="qq-fill" style="display:block;width:${Math.max(2, s[kind] / max * 100)}%"></span></span>
-      <span class="qq-num"><b>${s[kind]}</b> ${W_} · ${rateOf(s).toFixed(0)}%</span>
+      <span class="qq-track"><span class="qq-fill" style="display:block;width:${Math.max(2, (mode === 'rate' ? s.rate : s.no) / max * 100)}%"></span></span>
+      <span class="qq-num"><b>${s.no}</b> No · ${s.rate.toFixed(0)}%</span>
       ${qaQText(s.label) ? `<span class="qq-qt">${esc(qaQText(s.label))}</span>` : ''}
     </div>`).join('');
-    $(u.p + 'Trend').innerHTML = qqTrendHtml(u.sel, key);
-  });
+  $('qqTrend').innerHTML = qqTrendHtml(qqSel);
 }
 
 /* ---------- QA audit details: click a ticket to see the whole audit as a simple Label: value list ---------- */
@@ -4026,12 +3880,6 @@ const TRACKER_STATUS = {
   leave:    { icon: '🌴', label: 'Leave' },
   off:      { icon: '–', label: 'OFF' }
 };
-const TRACKER_LEGEND = [
-  ['present', '✔ Present (shift finished; stays Present until the LOLI Actual sheet is updated for that date)'], ['upcoming', '○ Upcoming (shift not finished yet)'],
-  ['partial', `◐ Late / Left early (actual login / logout from LOLI Actual, more than ${LOLI_GRACE_MIN} min off the shift or logged-in hours short; * = estimated half shift)`],
-  ['absent', '✖ Called off / NCNS (NCNS is tagged automatically from Nov 1, 2026 on, and only when LOLI Actual has data for a later date but nothing for that day)'], ['leave', '🌴 Leave (VL, SL, ...)'], ['off', '– OFF']
-];
-
 function indexRecords(list) {
   const m = new Map();
   list.forEach(x => {
@@ -4437,15 +4285,13 @@ function buildAgentSummary() {
   box.innerHTML = `
     <div class="trk-head"><div class="trk-title">${esc(a.name)} <small>· ${esc(a.sup)} · ${esc(periodLabel)}</small></div></div>
     <div class="stats sum-cards five" style="margin-bottom:16px">${cards}</div>
-    <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
-    <div class="panel"><div class="schedule-container">${stack}</div></div>
-    <h3 class="sum-h">Overall Metric Scorecard</h3>
-    <div class="panel"><div class="schedule-container">${scores}</div></div>
-    <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span></div>
     <h3 class="sum-h" style="margin-top:16px">Quality assurance</h3>
     <div class="panel"><div class="schedule-container" id="agSumQaBox">${agSumQaHtml()}</div></div>
-    <div class="panel qq yes"><div class="qq-head"><b>📈 What went well</b><span class="qq-sub" id="sySub"></span><div class="qq-ctl"><button type="button" id="syMore" onclick="qqToggle('syes')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="syBars" data-qq="syes"></div><div class="qq-trend" id="syTrend"></div></div></div>
-    <div class="panel qq"><div class="qq-head"><b>📉 What went wrong</b><span class="qq-sub" id="sqSub"></span><div class="qq-ctl"><button type="button" id="sqMore" onclick="qqToggle('sno')">Show all</button></div></div><div class="qq-body"><div class="qq-bars" id="sqBars" data-qq="sno"></div><div class="qq-trend" id="sqTrend"></div></div></div>`;
+    <h3 class="sum-h">Overall Metric Scorecard</h3>
+    <div class="panel"><div class="schedule-container">${scores}</div></div>
+    <h3 class="sum-h" style="margin-top:16px">Performance stack ranking</h3>
+    <div class="panel"><div class="schedule-container">${stack}</div></div>
+    <div class="trk-legend" style="margin-top:12px"><span class="trk-chip st-present">Green: target met</span><span class="trk-chip st-partial">Amber: just below</span><span class="trk-chip st-absent">Red: well below</span></div>`;
 
 
   /* Schedule calendar for the same agent. The month follows the latest ticked month whenever the agent or months change;
@@ -4455,229 +4301,9 @@ function buildAgentSummary() {
   const calKey = a.name + '|' + selYm.join(',');
   if (calKey !== agSumCalKey) { agSumCalKey = calKey; $('rosterMonth').value = selYm[selYm.length - 1]; }
   buildRosterView(a.name);
-
-  /* What went well / What went wrong for this agent: the ticked months for the bars, every month for the trend */
-  const myQa = qaList.map((x, id) => { const date = normalizeDate(x.CallDate); return { analyst: String(x['Analyst Name'] ?? '').trim(), ym: date.slice(0, 7), id }; })
-    .filter(x => x.ym && normName(x.analyst) === normName(a.name));
-  buildSumQuestions(myQa.filter(x => selYm.includes(x.ym)), myQa);
 }
 
 const trackerTip = x => [x.shift && !isOff(x.shift) ? `Shift: ${convertShiftRange(x.shift)} EST` : '', actualTip(x)].filter(Boolean).join('\n');
-
-function trackerHeaderHtml(r, info) {
-  const c = trackerSummary(info);
-  const chip = (k, label, n) => `<span class="trk-chip st-${k}">${TRACKER_STATUS[k].icon} ${label}: ${n}</span>`;
-  return `<div class="trk-head">
-    <div class="trk-title">${esc(r.Name)} <small>· ${esc(r.Supervisor || 'Unassigned')}</small></div>
-    <span class="trk-chip info">🗓️ Expected days: ${c.expected}</span>
-    ${chip('present', 'Present', c.present)}${chip('partial', 'Late/LE', c.partial)}${chip('absent', 'Called off', c.absent)}${chip('leave', 'Leave', c.leave)}${chip('off', 'OFF', c.off)}
-    <span class="trk-chip info">📊 Attendance: ${trackerPct(c)}</span>
-    <span class="trk-chip info">⏱ Hours: ${c.hoursWorked.toFixed(1)} / ${c.hoursExp.toFixed(1)}</span>
-  </div>`;
-}
-
-/* % column sort: '' = by name, 'asc' = lowest first, 'desc' = highest first */
-let trackerPctSort = '';
-function toggleTrackerPctSort() {
-  trackerPctSort = trackerPctSort === '' ? 'asc' : trackerPctSort === 'asc' ? 'desc' : '';
-  buildTracker();
-}
-
-/* Shift column: the agent's usual shift for the month (most common non-OFF shift, EST) */
-function trackerShiftInfo(info) {
-  const cnt = new Map();
-  info.forEach(x => { if (x.shift && !isOff(x.shift)) cnt.set(x.shift, (cnt.get(x.shift) || 0) + 1); });
-  const list = [...cnt.entries()].sort((a, b) => b[1] - a[1]);
-  if (!list.length) return { text: '—', varies: false, tip: 'No shift this month' };
-  return {
-    text: convertShiftRange(list[0][0]),
-    varies: list.length > 1,
-    tip: list.map(([sh, n]) => `${convertShiftRange(sh)} EST - ${n} day${n === 1 ? '' : 's'}`).join('\n')
-  };
-}
-
-function trackerGridHtml(rows, monthOf, days, today) {
-  if (!rows.length) return '<div class="empty" style="--c:#6c757d">No agents found</div>';
-
-  if (trackerPctSort) {
-    const dir = trackerPctSort === 'asc' ? 1 : -1;
-    const pctOf = r => trackerSummary(monthOf(r)).pct;
-    rows = rows
-      .map(r => ({ r, p: pctOf(r) }))
-      .sort((a, b) => {
-        if (a.p == null && b.p == null) return a.r.Name.localeCompare(b.r.Name);
-        if (a.p == null) return 1;                 // agents with no % go last
-        if (b.p == null) return -1;
-        return dir * (a.p - b.p) || a.r.Name.localeCompare(b.r.Name);
-      })
-      .map(x => x.r);
-  }
-  const sortArrow = trackerPctSort === 'asc' ? ' ▲' : trackerPctSort === 'desc' ? ' ▼' : ' ↕';
-  const dow = 'SMTWTFS';
-  const head = days.map(d => {
-    const dt = parseYMD(d);
-    return `<th class="${d === today ? 'today' : ''}">${dt.getDate()}<br><small>${dow[dt.getDay()]}</small></th>`;
-  }).join('');
-
-  const body = rows.map(r => {
-    const info = monthOf(r), c = trackerSummary(info), sh = trackerShiftInfo(info);
-    const cells = info.map(x => `<td class="trk-cell st-${x.kind}" title="${esc(trackerTip(x))}">${esc(x.code)}${x.estimated ? '*' : ''}</td>`).join('');
-    return `<tr class="${supClass(r.Supervisor)}" style="${supStyle(r.Supervisor)}">
-      <td class="trk-name" data-agent="${esc(r.Name)}" title="Open calendar">${esc(r.Name)}</td>
-      <td class="trk-shift" title="${esc(sh.tip)}">${esc(sh.text)}${sh.varies ? ' 🔁' : ''}</td>
-      <td class="trk-sum" title="Expected days">${c.expected}</td>
-      <td class="trk-sum" title="Present">${c.present}</td>
-      <td class="trk-sum" title="Late / Left early">${c.partial}</td>
-      <td class="trk-sum" title="Called off / NCNS">${c.absent}</td>
-      <td class="trk-sum" title="Leave">${c.leave}</td>
-      <td class="trk-sum" title="Hours worked / hours expected">${trackerPct(c)}</td>
-      ${cells}</tr>`;
-  }).join('');
-
-  return `<div class="panel"><div class="schedule-container"><table class="nosort trk-grid">
-    <thead><tr><th>👤 Agent</th><th title="Usual shift for the month (EST). 🔁 = shift changes during the month">🕒 Shift (EST)</th><th title="Expected days">Exp</th><th title="Present">✔</th><th title="Late / Left early">◐</th><th title="Called off / NCNS">✖</th><th title="Leave">🌴</th><th class="sortable" onclick="toggleTrackerPctSort()" title="Click to sort by attendance % (lowest first, highest first, then by name)">%${sortArrow}</th>${head}</tr></thead>
-    <tbody>${body}</tbody></table></div></div>`;
-}
-
-function trackerCalendarHtml(info, today, agent) {
-  const lead = (parseYMD(info[0].date).getDay() + 6) % 7;
-  const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('');
-  const cells = info.map(x => {
-    const showText = ['absent', 'leave', 'partial'].includes(x.kind) ? x.text : TRACKER_STATUS[x.kind].label;
-    const note = x.missed
-      ? `<div class="cal-note">${missedText(x)}</div>`
-      : (x.reason && up(x.reason) !== up(x.text) ? `<div class="cal-note">${esc(x.reason)}</div>` : '');
-    return `<div class="cal-day st-${x.kind}${x.date === today ? ' is-today' : ''}" title="${esc(trackerTip(x))}">
-      <div class="cal-num">${parseYMD(x.date).getDate()}</div>
-      <div class="cal-status">${x.icon} ${esc(showText)}</div>
-      ${x.shift ? `<div class="cal-shift">${convertShiftRange(x.shift)}</div>` : ''}${note}${x.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(x.loggedHrs)} hrs logged${x.gapMin ? ` · ${fmtHrs(x.gapMin / 60)} logged out` : ''}</div>` : ''}${dayPctHtml(x)}${agent && canDispute(x) ? disputeLinkHtml(agent.Name, x.date, agent.Supervisor) : ''}</div>`;
-  }).join('');
-  return `<div class="panel"><div class="cal">${dows}${'<div></div>'.repeat(lead)}${cells}</div></div>`;
-}
-
-function buildTracker() {
-  const body = $('trackerBody');
-  const rosterN = estData.filter(r => loliIdx.has(normName(r.Name))).length;
-  const fmtLong = d => parseYMD(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const LEG = [
-    ['present', 'Present', 'Shift completed and attendance recorded'],
-    ['upcoming', 'Upcoming', 'Scheduled shift has not been completed yet'],
-    ['partial', 'Late / Left Early', `Log-in/log-out is more than ${LOLI_GRACE_MIN} minutes outside the scheduled shift, or logged-in hours are more than ${LOLI_GRACE_MIN} minutes short of it (* indicates an estimated half shift)`],
-    ['absent', 'Called Off / NCNS', 'Scheduled shift not worked (NCNS is automatically tagged when later LOLI Actual data exists but no attendance is recorded for the scheduled day)'],
-    ['leave', 'Leave', 'Approved leave (VL)'],
-    ['off', 'OFF', 'Scheduled day off']
-  ];
-  $('trackerLegend').innerHTML =
-    '<div class="ti-title">🎨 Attendance Status Legend</div>' +
-    LEG.map(([k, label, desc]) => `<div class="ti-row"><span class="trk-chip st-${k}">${TRACKER_STATUS[k].icon} ${label}</span><span class="ti-desc">${esc(desc)}</span></div>`).join('') +
-    '<div class="ti-title" style="margin-top:12px">💡 What will this cost me?</div>' +
-    '<div class="ti-row"><span class="ti-desc">Every minute late or left early is deducted from that day\'s attendance %, even inside the ' + LOLI_GRACE_MIN + '-minute grace period (the grace period only decides the Late / Left Early tag). Example: 10 minutes late on an 11-hour shift is about −1.5% for that day (about −1.9% on a 9-hour shift). A day at 95% or higher shows green.</span></div>' +
-    '<div class="ti-title" style="margin-top:12px">📋 Data Summary</div>' +
-    `<div class="ti-sum"><span title="Log-in / log-out rows read from the LOLI Actual tab">🕘 LOLI Actual: ${loliInfo.rows} records</span>` +
-    `<span>${rosterN} of ${estData.length} agents matched</span>` +
-    (loliInfo.lastDate ? `<span>Updated through ${fmtLong(loliInfo.lastDate)}</span>` : '') + '</div>' +
-    (DISPUTE_GID ? `<div class="ti-sum"><span title="Log-in / log-out disputes from the dispute form">📝 Disputes: ${disputeInfo.rows} applied${DISPUTE_NEEDS_APPROVAL ? ` • ${disputeInfo.pending} pending approval` : ''}</span></div>` : '');
-
-  const ym = $('trackerMonth').value;
-  if (!ym || !estData.length) {
-    body.innerHTML = '<div class="empty" style="--c:#6c757d">Pick a month (schedule data must be loaded)</div>';
-    return;
-  }
-  const [y, m] = ym.split('-').map(Number);
-  const days = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
-  const today = ymd(estNow());
-  const view = $('trackerView').value;
-  $('trackerDownloadBtn').hidden = view !== 'grid';      // Download CSV is for the grid view only
-  const sup = $('trackerSupervisor').value;
-  const q = up($('trackerSearch').value);
-
-  const roster = estData
-    .filter(r => sup === ALL || r.Supervisor === sup)
-    .sort((a, b) => a.Name.localeCompare(b.Name));
-
-  const sel = $('trackerAgent'), prev = sel.value;
-  sel.innerHTML = roster.map(r => `<option value="${esc(r.Name)}">${esc(r.Name)}</option>`).join('');
-  if (roster.some(r => r.Name === prev)) sel.value = prev;
-  sel.disabled = view === 'grid';
-  $('trackerSearch').disabled = view !== 'grid';
-
-  const idx = { pto: indexRecords(ptoList), att: indexAttendance(calledOffList, attTimeList) };
-  const monthOf = r => days.map(date => attendanceFor(r, date, today, idx));
-
-  if (view === 'grid') {
-    body.innerHTML = trackerGridHtml(roster.filter(r => !q || up(r.Name).includes(q)), monthOf, days, today);
-    return;
-  }
-  const agent = roster.find(r => r.Name === sel.value) || roster[0];
-  if (!agent) { body.innerHTML = '<div class="empty" style="--c:#6c757d">No agents found</div>'; return; }
-  const info = monthOf(agent);
-  body.innerHTML = trackerHeaderHtml(agent, info) + trackerCalendarHtml(info, today, agent);
-}
-
-/* Download the attendance grid as CSV (respects month, supervisor and search filters) */
-function downloadTracker() {
-  const ym = $('trackerMonth').value;
-  if (!ym || !estData.length) return toast('Nothing to download yet');
-
-  const [y, m] = ym.split('-').map(Number);
-  const days = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => ymd(new Date(y, m - 1, i + 1)));
-  const today = ymd(estNow());
-  const sup = $('trackerSupervisor').value;
-  const q = up($('trackerSearch').value);
-
-  const idx = { pto: indexRecords(ptoList), att: indexAttendance(calledOffList, attTimeList) };
-  const roster = estData
-    .filter(r => (sup === ALL || r.Supervisor === sup) && (!q || up(r.Name).includes(q)))
-    .sort((a, b) => a.Name.localeCompare(b.Name));
-
-  const cellText = x => x.kind === 'present' ? 'P'
-                      : x.kind === 'upcoming' ? 'U'
-                      : x.kind === 'off' ? 'OFF'
-                      : x.code + (x.estimated ? '*' : '');
-  const csvCell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-
-  const rows = [[
-    'Agent', 'Supervisor', 'Shift (EST)', 'Expected days', 'Present', 'Late/Left early', 'Called off', 'Leave',
-    'Attendance %', 'Hours worked', 'Hours expected',
-    ...days.map(d => { const dt = parseYMD(d); return `${dt.getDate()} (${DAYS[dt.getDay()].slice(0, 3)})`; })
-  ]];
-
-  roster.forEach(r => {
-    const info = days.map(d => attendanceFor(r, d, today, idx)), c = trackerSummary(info);
-    rows.push([r.Name, r.Supervisor, trackerShiftInfo(info).text, c.expected, c.present, c.partial, c.absent, c.leave,
-               trackerPct(c), c.hoursWorked.toFixed(1), c.hoursExp.toFixed(1), ...info.map(cellText)]);
-  });
-  rows.push([]);
-  rows.push(['P = Present, U = Upcoming, LATE / LE / SH = Late / Left early / Short hours (* = estimated half shift), NCNS / CO = Called off, VL / SL / ML / BRV = Leave, OFF = Off']);
-
-  const filename = `attendance-tracker-${ym}.csv`;
-  const csv = '\uFEFF' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');   // BOM keeps Excel happy with UTF-8
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
-  toast('⬇ Downloaded ' + filename);
-}
-
-function shiftTrackerMonth(delta) {
-  const [y, m] = ($('trackerMonth').value || ymd(estNow()).slice(0, 7)).split('-').map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  $('trackerMonth').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-  buildTracker();
-}
-
-function initTracker() {
-  $('trackerBody').addEventListener('click', e => {
-    const cell = e.target.closest('[data-agent]');
-    if (!cell) return;
-    $('trackerView').value = 'calendar';
-    $('trackerAgent').value = cell.dataset.agent;
-    buildTracker();
-  });
-}
 
 /* =====================================================================
    MENUS + TOAST
@@ -4694,7 +4320,6 @@ function toast(t) {
    ===================================================================== */
 window.addEventListener('DOMContentLoaded', async () => {
   initMinTarget();
-  initTracker();
   initMetricMonth();
   initGroupToggle();
   initQa();
@@ -4704,7 +4329,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   const today = ymd(estNow());
   ['ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate', 'forecastDate']
     .forEach(id => $(id).value = today);
-  $('trackerMonth').value = today.slice(0, 7);
   showTab('summaryTab');           // landing page
 
   await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadQAScoring(), loadMetric(), loadMcs()]);
@@ -4738,8 +4362,8 @@ const DATA_UPDATES = {
   metricTab:     {date:'', note:''},
 };
 /* The Summary page has no row of its own: it lists the notes of the pages below (add a "Summary" row in the sheet to override). */
-const PAGE_ALIASES = { attendancetracker: 'trackerTab', attendance: 'trackerTab' };
-const SUMMARY_FROM = [['trackerTab','Attendance'], ['qaTab','Quality Assurance'], ['mcsTab','Metric Scorecard'], ['metricTab','Stack Ranking']];
+const PAGE_ALIASES = { attendancetracker: 'attendanceData', attendance: 'attendanceData' };   // no page of its own any more; the Summary page still shows its date
+const SUMMARY_FROM = [['attendanceData','Attendance'], ['qaTab','Quality Assurance'], ['mcsTab','Metric Scorecard'], ['metricTab','Stack Ranking']];
 function renderDataUpdate(id){
   const kpi = document.getElementById('kpiCard');   // the targets card sits above the note and only shows on the Summary page
   if (kpi) kpi.hidden = !/^(summaryTab|scoreSumTab)$/.test(id);
@@ -4777,7 +4401,7 @@ let sheetUpdates = null;
 const normKey = v => String(v == null ? '' : v).toLowerCase().replace(/[^a-z0-9]/g, '');
 function resolveTabId(label){
   const k = normKey(label); if (!k) return null;
-  if (PAGE_ALIASES[k] && document.getElementById(PAGE_ALIASES[k])) return PAGE_ALIASES[k];
+  if (PAGE_ALIASES[k]) return PAGE_ALIASES[k];
   for (const a of document.querySelectorAll('.side [data-tab]')) {
     const id = a.dataset.tab;
     if ([id, id.replace(/Tab$/, ''), a.dataset.title, a.textContent].some(n => normKey(n) === k)) return id;
