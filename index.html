@@ -440,6 +440,9 @@ html[data-theme=dark] .qq-crit.no b{color:#f87171}
 .qq-txt{fill:var(--muted);font-size:10px}
 .qq-val{fill:var(--ink);font-size:10px;font-weight:600}
 .qq-note{color:var(--muted);font-size:12px;margin-top:6px}
+.qq.yes .qq-fill{background:var(--green)}
+.qq.yes .qq-line{stroke:var(--green)}
+.qq.yes .qq-dot{fill:var(--green)}
 </style>
 <script>(function(){try{var m=localStorage.getItem('ditsc_theme')||'system';document.documentElement.dataset.theme=(m==='dark'||(m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))?'dark':'light'}catch(e){}})()</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
@@ -1287,16 +1290,29 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   <div class="trk-legend" id="qaLegend"></div>
   <div class="panel qq" id="qaQuestions">
     <div class="qq-head">
-      <b>📉 Questions answered “No”</b>
+      <b>📉 What went wrong</b>
       <span class="qq-sub" id="qqSub"></span>
       <div class="qq-ctl">
         <input type="hidden" id="qqSort" value="count">
-        <button type="button" id="qqMore" onclick="qqToggle()">Show all</button>
+        <button type="button" id="qqMore" onclick="qqToggle('no')">Show all</button>
       </div>
     </div>
     <div class="qq-body">
       <div class="qq-bars" id="qqBars"></div>
       <div class="qq-trend" id="qqTrend"></div>
+    </div>
+  </div>
+  <div class="panel qq yes" id="qaWell">
+    <div class="qq-head">
+      <b>📈 What went well</b>
+      <span class="qq-sub" id="qySub"></span>
+      <div class="qq-ctl">
+        <button type="button" id="qyMore" onclick="qqToggle('yes')">Show all</button>
+      </div>
+    </div>
+    <div class="qq-body">
+      <div class="qq-bars" id="qyBars"></div>
+      <div class="qq-trend" id="qyTrend"></div>
     </div>
   </div>
   <div class="panel">
@@ -2791,7 +2807,8 @@ function buildQA() {
 /* ---------- QA: which questions (Q1 - Q25) are answered "No" the most, and how that moves month by month ----------
    Follows the QA filters: the bars use the ticked months + supervisor + search; the trend line uses every month (same supervisor + search).
    Only Yes / No answers count; N/A and blank answers are skipped. "No %" = No / (Yes + No). Click a bar to see that question's trend. */
-let qqSel = null, qqAll = false, qqLast = { rows: [], trend: [] }, qqBound = false;
+const qqUi = { no: { p: 'qq', sel: null, all: false, word: 'No' }, yes: { p: 'qy', sel: null, all: false, word: 'Yes' } };   // What went wrong (No) / What went well (Yes)
+let qqLast = { rows: [], trend: [] }, qqBound = false;
 const qaAnswerKind = v => { const s = String(v ?? '').trim().toLowerCase(); return /^(no|n)$/.test(s) ? 'no' : /^(yes|y)$/.test(s) ? 'yes' : ''; };
 const qaQInfo = label => qaQMap.get(parseInt(String(label).replace(/\D/g, ''), 10) || 0) || null;
 const qaLines = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);      // one entry per line of a sheet cell
@@ -2807,18 +2824,19 @@ function qaQuestionStats(rows) {
       m.get(q.label)[k]++;
     });
   });
-  return [...m.values()].map(e => ({ ...e, tot: e.no + e.yes, rate: e.no + e.yes ? e.no / (e.no + e.yes) * 100 : 0 }));
+  return [...m.values()].map(e => ({ ...e, tot: e.no + e.yes, rate: e.no + e.yes ? e.no / (e.no + e.yes) * 100 : 0, yrate: e.no + e.yes ? e.yes / (e.no + e.yes) * 100 : 0 }));
 }
-function qqToggle() { qqAll = !qqAll; buildQaQuestions(); }
-function qqTrendHtml(label) {
+function qqToggle(kind) { qqUi[kind].all = !qqUi[kind].all; buildQaQuestions(); }
+function qqTrendHtml(label, kind) {
+  const W_ = qqUi[kind].word;
   const byMonth = new Map();
   qqLast.trend.forEach(x => { if (!byMonth.has(x.ym)) byMonth.set(x.ym, []); byMonth.get(x.ym).push(x); });
   const pts = [...byMonth.keys()].sort().map(ym => {
     const s = qaQuestionStats(byMonth.get(ym)).find(e => e.label === label);
-    return { ym, no: s ? s.no : 0, tot: s ? s.tot : 0, rate: s && s.tot ? s.rate : null };
+    return { ym, cnt: s ? s[kind] : 0, tot: s ? s.tot : 0, rate: s && s.tot ? (kind === 'no' ? s.rate : s.yrate) : null };
   });
   const qi = qaQInfo(label);
-  const head = `<div class="qq-tt">${esc(label)} – “No” % by month</div>` +
+  const head = `<div class="qq-tt">${esc(label)} – “${W_}” % by month</div>` +
     (qi && qi.text ? `<div class="qq-qfull">${qaLines(qi.text).map(esc).join('<br>')}</div>` + qaCritHtml('✅ YES:', qi.yes, 'yes') + qaCritHtml('❌ NO:', qi.no, 'no') : '');
   const have = pts.filter(p => p.rate != null);
   if (!have.length) return head + '<div class="qq-note">No Yes / No answers for this question yet.</div>';
@@ -2829,40 +2847,43 @@ function qqTrendHtml(label) {
   const grid = [0, yMax / 2, yMax].map(v => `<line class="qq-grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="qq-txt" x="${L - 5}" y="${Y(v) + 3}" text-anchor="end">${v}%</text>`).join('');
   const line = have.length > 1 ? `<polyline class="qq-line" points="${pts.map((p, i) => p.rate == null ? '' : X(i) + ',' + Y(p.rate)).filter(Boolean).join(' ')}"/>` : '';
   const dots = pts.map((p, i) => p.rate == null ? '' :
-    `<circle class="qq-dot" cx="${X(i)}" cy="${Y(p.rate)}" r="3.5"><title>${esc(mlab(p.ym))}: ${p.no} No of ${p.tot} answered (${p.rate.toFixed(1)}%)</title></circle>` +
+    `<circle class="qq-dot" cx="${X(i)}" cy="${Y(p.rate)}" r="3.5"><title>${esc(mlab(p.ym))}: ${p.cnt} ${W_} of ${p.tot} answered (${p.rate.toFixed(1)}%)</title></circle>` +
     `<text class="qq-val" x="${X(i)}" y="${Y(p.rate) - 8}" text-anchor="middle">${p.rate.toFixed(0)}%</text>`).join('');
   const step = Math.ceil(n / 7);
   const xl = pts.map((p, i) => i % step ? '' : `<text class="qq-txt" x="${X(i)}" y="${H - 14}" text-anchor="middle">${esc(mlab(p.ym))}</text>`).join('');
   const last = have[have.length - 1], prev = have[have.length - 2];
   const delta = prev ? ` · ${last.rate - prev.rate >= 0 ? '+' : ''}${(last.rate - prev.rate).toFixed(1)} pts vs ${mlab(prev.ym)}` : '';
-  return head + `<svg class="qq-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)} No percentage by month">${grid}${line}${dots}${xl}</svg>` +
-    `<div class="qq-note">${esc(mlab(last.ym))}: ${last.no} No of ${last.tot} answered (${last.rate.toFixed(1)}%)${delta}</div>`;
+  return head + `<svg class="qq-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)} ${W_} percentage by month">${grid}${line}${dots}${xl}</svg>` +
+    `<div class="qq-note">${esc(mlab(last.ym))}: ${last.cnt} ${W_} of ${last.tot} answered (${last.rate.toFixed(1)}%)${delta}</div>`;
 }
 function buildQaQuestions(rows, trend) {
   if (rows) qqLast = { rows, trend: trend || rows };
   if (!qqBound) {
     qqBound = true;
-    $('qqBars').addEventListener('click', e => { const r = e.target.closest('.qq-row'); if (r) { qqSel = r.dataset.q; buildQaQuestions(); } });
+    Object.values(qqUi).forEach(u => $(u.p + 'Bars').addEventListener('click', e => { const r = e.target.closest('.qq-row'); if (r) { u.sel = r.dataset.q; buildQaQuestions(); } }));
   }
-  const mode = $('qqSort').value, stats = qaQuestionStats(qqLast.rows);
-  stats.sort((a, b) => mode === 'rate' ? b.rate - a.rate || b.no - a.no || a.n - b.n : b.no - a.no || b.rate - a.rate || a.n - b.n);
-  $('qqSub').textContent = `${qqLast.rows.length} audit${qqLast.rows.length === 1 ? '' : 's'} · N/A and blank answers are skipped`;
-  $('qqMore').hidden = stats.length <= 10;
-  $('qqMore').textContent = qqAll ? 'Show top 10' : `Show all ${stats.length}`;
-  if (!stats.length) {
-    $('qqBars').innerHTML = '<div class="qq-note">No Yes / No answers found in the question columns for these filters.</div>';
-    $('qqTrend').innerHTML = ''; return;
-  }
-  if (!qqSel || !stats.some(s => s.label === qqSel)) qqSel = stats[0].label;
-  const shown = qqAll ? stats : stats.slice(0, 10), max = Math.max(...shown.map(s => mode === 'rate' ? s.rate : s.no)) || 1;
-  $('qqBars').innerHTML = shown.map(s => `
-    <div class="qq-row${s.label === qqSel ? ' sel' : ''}" data-q="${esc(s.label)}" title="${s.no} No of ${s.tot} answered (${s.rate.toFixed(1)}%) – click for the monthly trend">
+  const allStats = qaQuestionStats(qqLast.rows);
+  Object.entries(qqUi).forEach(([kind, u]) => {
+    const stats = allStats.slice(), rateOf = s => kind === 'no' ? s.rate : s.yrate, W_ = u.word;
+    stats.sort((a, b) => b[kind] - a[kind] || rateOf(b) - rateOf(a) || a.n - b.n);
+    $(u.p + 'Sub').textContent = `${qqLast.rows.length} audit${qqLast.rows.length === 1 ? '' : 's'} · N/A and blank answers are skipped`;
+    $(u.p + 'More').hidden = stats.length <= 10;
+    $(u.p + 'More').textContent = u.all ? 'Show top 10' : `Show all ${stats.length}`;
+    if (!stats.length) {
+      $(u.p + 'Bars').innerHTML = '<div class="qq-note">No Yes / No answers found in the question columns for these filters.</div>';
+      $(u.p + 'Trend').innerHTML = ''; return;
+    }
+    if (!u.sel || !stats.some(s => s.label === u.sel)) u.sel = stats[0].label;
+    const shown = u.all ? stats : stats.slice(0, 10), max = Math.max(...shown.map(s => s[kind])) || 1;
+    $(u.p + 'Bars').innerHTML = shown.map(s => `
+    <div class="qq-row${s.label === u.sel ? ' sel' : ''}" data-q="${esc(s.label)}" title="${s[kind]} ${W_} of ${s.tot} answered (${rateOf(s).toFixed(1)}%) – click for the monthly trend">
       <span class="qq-lab">${esc(s.label)}</span>
-      <span class="qq-track"><span class="qq-fill" style="display:block;width:${Math.max(2, (mode === 'rate' ? s.rate : s.no) / max * 100)}%"></span></span>
-      <span class="qq-num"><b>${s.no}</b> No · ${s.rate.toFixed(0)}%</span>
+      <span class="qq-track"><span class="qq-fill" style="display:block;width:${Math.max(2, s[kind] / max * 100)}%"></span></span>
+      <span class="qq-num"><b>${s[kind]}</b> ${W_} · ${rateOf(s).toFixed(0)}%</span>
       ${qaQText(s.label) ? `<span class="qq-qt">${esc(qaQText(s.label))}</span>` : ''}
     </div>`).join('');
-  $('qqTrend').innerHTML = qqTrendHtml(qqSel);
+    $(u.p + 'Trend').innerHTML = qqTrendHtml(u.sel, kind);
+  });
 }
 
 /* ---------- QA audit details: click a ticket to see the whole audit as a simple Label: value list ---------- */
