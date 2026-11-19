@@ -3139,16 +3139,16 @@ function buildSummary() {
   /* 1. Headline cards */
   const pickSet = new Set(list.map(a => normName(a.name)));
   const mKeys = mcsHeads.map(mcsKey);
-  const mAvg = name => {
+  const mAvg = (name, add) => {                  // add = true: the figures of all the agents / months are ADDED UP instead of averaged
     const i = agsumFindCol(name, mKeys);
     if (i < 0) return { v: null, pct: true, head: name };
     const nums = mcsRows.filter(r => (mcsI.month < 0 || sel.some(t => ssMonthMatches(r[mcsI.month], t))) && pickSet.has(normName(r[mcsI.agent])))
       .map(r => metricVal(r[i])).filter(v => typeof v === 'number');
-    return { v: nums.length ? nums.reduce((t, v) => t + v, 0) / nums.length : null, pct: metricColKind(i, mcsRows).kind === 'pct', head: mcsHeads[i] };
+    return { v: nums.length ? nums.reduce((t, v) => t + v, 0) / (add ? 1 : nums.length) : null, pct: metricColKind(i, mcsRows).kind === 'pct', head: mcsHeads[i], add: !!add };
   };
-  const kcol = m => m.v == null ? '#1e88e5' : BAND_COL[mcsBand(m.head, m.v.toFixed(2) + '%')] || '#1e88e5';
+  const kcol = m => m.v == null || m.add ? '#1e88e5' : BAND_COL[mcsBand(m.head, m.v.toFixed(2) + '%')] || '#1e88e5';
   const kfmt = m => m.v == null ? '—' : m.pct ? m.v.toFixed(2) + '%' : String(+m.v.toFixed(2));
-  const wr = mAvg('Working Rate'), cp = mAvg('Compliance'), mr = mAvg('Misroutes'), fc = mAvg('FCR Count (First Contact Resolution)');
+  const wr = mAvg('Working Rate'), cp = mAvg('Compliance'), mr = mAvg('Misroutes', true), fc = mAvg('FCR Count (First Contact Resolution)');
   const col = (k, v) => BAND_COL[bandOf(k, v)] || '#1e88e5';
   const card = (title, value, sub, color) => `<div class="card" style="--c:${color}"><h3>${title}</h3><div class="value">${value}</div><div class="pct">${sub}</div></div>`;
   $('sumCards').innerHTML =
