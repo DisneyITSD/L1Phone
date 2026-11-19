@@ -1276,7 +1276,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       <b>📉 Questions answered “No”</b>
       <span class="qq-sub" id="qqSub"></span>
       <div class="qq-ctl">
-        <select id="qqSort" onchange="buildQaQuestions()"><option value="count">Most “No” answers</option><option value="rate">Highest “No” %</option></select>
+        <select id="qqSort" onchange="buildQaQuestions()"><option value="count">Number of “No” answers</option><option value="rate">Highest “No” %</option></select>
         <button type="button" id="qqMore" onclick="qqToggle()">Show all</button>
       </div>
     </div>
@@ -2802,7 +2802,7 @@ function qqTrendHtml(label) {
     return { ym, no: s ? s.no : 0, tot: s ? s.tot : 0, rate: s && s.tot ? s.rate : null };
   });
   const head = `<div class="qq-tt">${esc(label)} – “No” % by month</div>` +
-    (qaQText(label) ? `<div class="qq-qfull">${esc(qaQText(label))}${(qaQInfo(label).yes || qaQInfo(label).no) ? `<small>${[qaQInfo(label).yes && 'Yes: ' + qaQInfo(label).yes + ' pts', qaQInfo(label).no && 'Markdown (No): ' + qaQInfo(label).no + ' pts'].filter(Boolean).map(esc).join(' · ')}</small>` : ''}</div>` : '');
+    (qaQText(label) ? `<div class="qq-qfull">${esc(qaQText(label))}${(qaQInfo(label).yes || qaQInfo(label).no) ? `<small>${[qaQInfo(label).yes && 'Yes: ' + qaQInfo(label).yes, qaQInfo(label).no && 'Markdown (No): ' + qaQInfo(label).no].filter(Boolean).map(esc).join(' · ')}</small>` : ''}</div>` : '');
   const have = pts.filter(p => p.rate != null);
   if (!have.length) return head + '<div class="qq-note">No Yes / No answers for this question yet.</div>';
   const W = 320, H = 180, L = 34, R = 12, T = 18, B = 34, n = pts.length;
