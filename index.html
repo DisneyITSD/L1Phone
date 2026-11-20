@@ -495,14 +495,10 @@ body{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;background:var(
 .side .tabs{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin:0 -4px;padding:0 4px}
 .nav-group{display:block}
 .nav-group + .nav-group{margin-top:6px}
-.side button.nav-label{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:32px;padding:6px 12px;border:0;border-radius:8px;background:none;color:var(--muted);font-family:inherit;font-size:11px;font-weight:600;line-height:1;letter-spacing:.07em;text-transform:uppercase;text-align:left;cursor:pointer;transform:none}
-.side button.nav-label:hover{color:var(--ink);background:none}
-.side button.nav-label:focus-visible,.submit-btn:focus-visible,.side a.tab-btn:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.side .nav-label{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:32px;padding:6px 12px;color:var(--muted);font-family:inherit;font-size:11px;font-weight:600;line-height:1;letter-spacing:.07em;text-transform:uppercase;text-align:left;cursor:default}
+.submit-btn:focus-visible,.side a.tab-btn:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
 .chev{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s ease}
-.nav-group.open .nav-label .chev{transform:rotate(180deg)}
-.nav-items{display:grid;grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows .2s ease,visibility 0s .2s}
-.nav-items > div{min-height:0;overflow:hidden}
-.nav-group.open .nav-items{grid-template-rows:1fr;visibility:visible;transition:grid-template-rows .2s ease,visibility 0s}
+.nav-items{display:block}
 .side a.tab-btn{position:relative;display:flex;align-items:center;gap:11px;min-height:36px;padding:8px 12px;border-radius:8px;color:#4b5563;font-size:14px;font-weight:500;line-height:1.25;opacity:1}
 .side a.tab-btn .ni{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
 .side a.tab-btn:hover{background:#f3f4f6;color:var(--ink);transform:none}
@@ -757,7 +753,6 @@ html[data-theme=dark] .side a.tab-btn:hover{background:#1e2735;color:#fff}
 html[data-theme=dark] .side a.tab-btn.active{background:#1f2c4d;color:#c7d6ff}
 html[data-theme=dark] .side button.submit-btn:hover{background:#fff}
 html[data-theme=dark] .submit-menu{box-shadow:0 14px 34px -12px rgba(0,0,0,.7)}
-html[data-theme=dark] .side button.nav-label:hover{color:#fff}
 html[data-theme=dark] .page-head #liveClock{background:#1d2635;color:#cfd7e4}
 html[data-theme=dark] .page-head #realtimeBtn:hover{background:#1f2837}
 html[data-theme=dark] .page-head #realtimeBtn.on{background:#12301f;border-color:#2f7a4b;color:#86efac}
@@ -960,7 +955,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   </div>
   <nav class="tabs" aria-label="Main">
     <div class="nav-group" data-group="Overview">
-      <button type="button" class="nav-label" aria-expanded="false"><span>Overview</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-label"><span>Overview</span></div>
       <div class="nav-items"><div>
         <a class="tab-btn" href="#announcementsTab" data-tab="announcementsTab"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span>Announcements</span></a>
         <a class="tab-btn" href="#summaryTab" data-tab="summaryTab"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 16V9M12 16V5M17 16v-4"/></svg><span>Summary</span></a>
@@ -969,7 +964,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       </div></div>
     </div>
     <div class="nav-group" data-group="Performance">
-      <button type="button" class="nav-label" aria-expanded="false"><span>Performance</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-label"><span>Performance</span></div>
       <div class="nav-items"><div>
         <a class="tab-btn" href="#qaTab" data-tab="qaTab"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>Quality Assurance</span></a>
         <a class="tab-btn" href="#mcsTab" data-tab="mcsTab" data-title="Overall Metric Scorecard"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Metric scorecard</span></a>
@@ -4603,22 +4598,8 @@ window.addEventListener('DOMContentLoaded', loadDataUpdates);
 setInterval(() => { if (!document.hidden) loadDataUpdates(); }, 60000);
 </script>
 <script>
-/* Sidebar: collapsible groups */
-function setGroup(g, open){
-  g.classList.toggle('open', open);
-  g.querySelector('.nav-label').setAttribute('aria-expanded', open);
-}
-function openOnly(g){ document.querySelectorAll('.side .nav-group').forEach(x => setGroup(x, x === g)); }
-(function(){
-  /* One group open at a time; opening one closes the others */
-  document.querySelectorAll('.side .nav-group').forEach(g =>
-    g.querySelector('.nav-label').addEventListener('click', () => g.classList.contains('open') ? setGroup(g, false) : openOnly(g)));
-  /* If the address already names a page (#qaTab, ...), open its group */
-  if (location.hash) {
-    const t = document.querySelector('.side [data-tab="' + location.hash.slice(1) + '"]'), g = t && t.closest('.nav-group');
-    if (g) openOnly(g);
-  }
-})();
+/* Sidebar: the groups are always open (nothing to expand or collapse) */
+function openOnly(){}
 /* Sidebar: highlight the open page, fill the page header, close the mobile menu */
 function setPageHead(id){
   const a = document.querySelector('.side [data-tab="' + id + '"]');
@@ -4627,7 +4608,6 @@ function setPageHead(id){
     $('pageTitle').textContent = a.dataset.title || a.textContent.trim();
     const g = a.closest('[data-group]');
     $('pageCrumb').textContent = g ? g.dataset.group : '';
-    if (g && g.classList.contains('nav-group')) openOnly(g);      // expand the open page's group, fold the rest
   }
   renderDataUpdate(id);
   document.body.classList.remove('nav-open');
