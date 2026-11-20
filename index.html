@@ -1377,6 +1377,11 @@ const LOLI_GID = '74611449';
 const DISPUTE_GID = '1843274746';
 /* true = a dispute only counts once the manager types "Approved" in the response tab's "Approval Status" column */
 const DISPUTE_NEEDS_APPROVAL = true;
+/* Short hours (lost hours) dispute form - see the notes above shortDisputeUrl() */
+const SHORT_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfuxa8mEM42VrLL9LTslc4Tpmdrznd1kSIjSsHGmQ1z4_wejw/viewform';
+const SHORT_ENTRY = { supervisor: 'entry.936055940', agent: 'entry.1985544097', date: 'entry.118938995', submittedBy: 'entry.132481408' };
+const SHORT_DISPUTE_GID = '1110634474';
+const SHORT_NEEDS_APPROVAL = true;
 /* LBPRR tab: Agent Name | Shift Date | Break | Overbreak | Lunch | Overlunch | Restroom | Project (same sheet as the supervisor view).
    Paste the number after "gid=" from the LBPRR tab's address bar here (most reliable). Empty = find the tab by its name. */
 const LBPRR_GID = '1191914646';
@@ -1434,6 +1439,7 @@ let estData = [], phData = [];
 let ptoList = [], calledOffList = [], announcementList = [], attTimeList = [], qaList = [];
 let disputeIdx = new Map();   // normalized agent + '|' + EST shift date -> { login, logout, reason, by }
 let disputeInfo = { rows: 0, pending: 0, rejected: 0, noStatus: false, error: '' };
+let shortIdx = new Map();     // normalized agent + '|' + EST shift date -> approved Short hours dispute { reason, by }
 let loliInfo = { rows: 0, agents: 0, error: '', sample: '', workDate: false };
 let utIdx = new Map();       // normalized agent name + '|' + EST shift date -> {brk, lunch, rest, proj} from the "LBPRR" tab
 let loliIdx = new Map();     // normalized agent name -> [{date, login, logout}] from the "LOLI Actual" tab
@@ -1733,20 +1739,22 @@ const loadSheet = async url =>
 
 async function loadAttendance() {
   try {
-    let loliRows, disputeRows, lbprrRows;
+    let loliRows, disputeRows, lbprrRows, shortRows;
     disputeInfo = { rows: 0, pending: 0, rejected: 0, noStatus: false, error: '' };
     loliInfo = { rows: 0, agents: 0, error: '', sample: '', workDate: false };
-    [ptoList, calledOffList, announcementList, attTimeList, loliRows, disputeRows, lbprrRows] = await Promise.all([
+    [ptoList, calledOffList, announcementList, attTimeList, loliRows, disputeRows, lbprrRows, shortRows] = await Promise.all([
       loadSheet(URLS.pto),
       loadSheet(URLS.calledOff),
       fetchCSV(URLS.announcements),
       loadSheet(URLS.attTime).catch(() => []),      // if this tab fails, everything else keeps working
       fetchCSV(URLS.loli, { raw: true }).catch(e => { loliInfo.error = e.message; return []; }),
       DISPUTE_GID ? fetchCSV(sheetUrl(DISPUTE_GID), { raw: true }).catch(e => { disputeInfo.error = e.message; return []; }) : Promise.resolve([]),
-      fetchCSV(LBPRR_URL, { raw: true }).catch(() => [])     // if this tab fails, the calendar simply shows no unavailable time
+      fetchCSV(LBPRR_URL, { raw: true }).catch(() => []),    // if this tab fails, the calendar simply shows no unavailable time
+      SHORT_DISPUTE_GID ? fetchCSV(sheetUrl(SHORT_DISPUTE_GID), { raw: true }).catch(() => []) : Promise.resolve([])
     ]);
     ptoList = ptoList.map(maskLeaveReason);
     disputeIdx = buildDisputeIndex(disputeRows);
+    shortIdx = buildShortIndex(shortRows);
     loadErrors.dispute = disputeInfo.error ? `Couldn't load the dispute form responses (${disputeInfo.error}) - check DISPUTE_GID and sharing`
                        : disputeInfo.noStatus ? 'Disputes need approval but the response tab has no "Approval Status" column - add it next to the form columns' : '';
     loliIdx = buildLoliIndex(loliRows);
@@ -2403,11 +2411,11 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
       <div class="cal-status">${c.shiftChg ? '🔁 ' : ''}${time}</div>
       ${a.kind === 'off' ? '' : `<div class="cal-status" style="font-size:11px">${a.icon} ${esc(a.text)}</div>`}
       ${a.missed ? `<div class="cal-note">${esc(missedText(a))}</div>` : ''}
-      ${a.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(a.loggedHrs)} hrs logged${a.gapMin ? ` · ${fmtHrs(a.gapMin / 60)} logged out` : ''}</div>` : ''}${dayPctHtml(a)}
+      ${a.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(a.loggedHrs)} hrs logged${a.gapMin ? ` · ${fmtHrs(a.gapMin / 60)} logged out` : ''}</div>` : ''}${a.shortDisputed ? '<div class="cal-note">✅ Lost hours dispute approved</div>' : ''}${dayPctHtml(a)}
       ${utHtml(r.Name, c.estDate || c.date)}
       ${c.shiftChg ? `<div class="cal-note">Was ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)}</div>` : ''}
       ${c.supChg ? `<div class="cal-note">Supervisor: ${esc(c.sup)}</div>` : ''}
-      ${canDispute(a) ? disputeLinkHtml(r.Name, c.estDate || c.date, c.sup || r.Supervisor) : ''}</div>`;
+      ${canDispute(a) ? disputeLinkHtml(r.Name, c.estDate || c.date, c.sup || r.Supervisor) : ''}${a.gapMin ? shortDisputeLinkHtml(r.Name, c.estDate || c.date, c.sup || r.Supervisor) : ''}</div>`;
   }).join('');
   const sm = trackerSummary(est), nowD = ymd(estNow());
   /* Month totals for the card: restroom time from the LBPRR sheet, lost hours = Short hours time only */
@@ -4124,6 +4132,7 @@ function attendanceFor(r, date, today, idx) {
         lg = Math.max(0, Math.min(win, sh - outside / 60));
         /* The sheet counts seconds but the log-in / log-out are read in whole minutes: a difference of 2 minutes or less is rounding, not time logged out */
         if ((win - lg) * 60 <= 2) lg = win;
+        if (shortIdx.has(normName(r.Name) + '|' + date) && (win - lg) * 60 > LOLI_GRACE_MIN) { x.shortDisputed = true; lg = win; }   // approved short hours dispute: no lost hours that day
         const gap = Math.round((win - lg) * 60);
         gapC = gap > LOLI_GRACE_MIN ? gap : 0;            // logged out during the shift for more than the grace period
       }
@@ -4223,6 +4232,42 @@ function disputeLinkHtml(name, date, supervisor) {
   const tip = filled ? 'Open the dispute form for this day' : `Open the dispute form and enter: ${name} · shift date ${date} (EST)`;
   return `<a class="cal-dispute" href="${esc(disputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="${esc(tip)}" onclick="event.stopPropagation()">🛠 Dispute</a>`;
 }
+/* ---------- Short hours (lost hours) dispute form ----------
+   A second Google Form, only for time logged out during the shift. Questions: Supervisor | Submitted by | Agent Name | Shift Date (EST) | Reason (what happened).
+   Its response tab needs an "Approval Status" column added by the manager; an Approved row removes that day's lost hours (the day's late / left early minutes are not touched).
+   SHORT_FORM_URL        = the form's link (ends with /viewform). Empty = no dispute link is shown on short-hours days.
+   SHORT_ENTRY           = optional pre-fill field numbers (⋮ menu › Get pre-filled link), same idea as DISPUTE_ENTRY above.
+   SHORT_DISPUTE_GID     = the number after gid= in the response tab's address bar. Empty = nothing is read. */
+function shortDisputeUrl(name, date, supervisor) {
+  const q = [];
+  if (SHORT_ENTRY.supervisor && supervisor) q.push(`${SHORT_ENTRY.supervisor}=${encodeURIComponent(supervisor)}`);
+  if (SHORT_ENTRY.agent && name) q.push(`${SHORT_ENTRY.agent}=${encodeURIComponent(name)}`);
+  if (SHORT_ENTRY.submittedBy && name) q.push(`${SHORT_ENTRY.submittedBy}=${encodeURIComponent(name)}`);
+  if (SHORT_ENTRY.date && date) q.push(`${SHORT_ENTRY.date}=${encodeURIComponent(date)}`);
+  return SHORT_FORM_URL + (q.length ? '?usp=pp_url&' + q.join('&') : '');
+}
+function shortDisputeLinkHtml(name, date, supervisor) {
+  if (!SHORT_FORM_URL) return '';
+  return `<a class="cal-dispute" href="${esc(shortDisputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="Open the short hours dispute form for this day" onclick="event.stopPropagation()">🛠 Dispute lost hours</a>`;
+}
+/* Approved short-hours disputes: agent + shift date -> { reason, by }. Columns are found by their header words. */
+function buildShortIndex(rows) {
+  const m = new Map();
+  const h = rows.findIndex(r => r.some(x => /agent/i.test(clean(x))) && r.some(x => /date/i.test(clean(x))));
+  if (h < 0) return m;
+  const f = (re, not) => rows[h].findIndex(x => re.test(clean(x)) && !(not && not.test(clean(x))));
+  const BY = /submitted|submitter|filed/i;
+  const c = { name: f(/agent/i, BY), date: f(/shift date|date/i, /timestamp/i), reason: f(/reason/i), status: f(/status|approv/i), by: f(BY) };
+  if (c.name < 0 || c.date < 0) return m;
+  rows.slice(h + 1).forEach(r => {
+    const name = clean(r[c.name]), date = parseLoliDate(r[c.date]);
+    if (!name || !date) return;
+    if (SHORT_NEEDS_APPROVAL && (c.status < 0 || up(r[c.status]) !== 'APPROVED')) return;
+    m.set(normName(name) + '|' + date, { reason: c.reason >= 0 ? clean(r[c.reason]) : '', by: c.by >= 0 ? clean(r[c.by]) : '' });
+  });
+  return m;
+}
+
 /* Only days that are below 100% attendance can be disputed (a day showing 100.0% has nothing to correct) */
 const canDispute = x => ['present', 'partial', 'absent'].includes(x.kind) && x.exp > 0 && (x.worked / x.exp) * 100 < 99.95;
 
