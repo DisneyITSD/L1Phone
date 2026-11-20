@@ -2432,8 +2432,8 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
     <div><div class="as-name">${esc(r.Name)}</div><div class="as-sup">${esc(r.Supervisor || 'Unassigned')}</div></div>
     <div><div class="as-pct" style="color:${sm.pct == null ? 'inherit' : sm.pct >= 95 ? '#16a34a' : sm.pct >= 91 ? '#d97706' : '#dc2626'}">${trackerPct(sm)}</div><div class="as-lbl">Attendance this month${ph ? ' (EST days)' : ''}</div>
       <div class="as-sub">${sm.hoursWorked.toFixed(1)} / ${sm.hoursExp.toFixed(1)} hrs${chg ? ' · 🔁 ' + chg + ' changed' : ''}</div>
-      <div class="as-sub">🚻 Total restroom: <b>${fmtHrs(restHrs)} hrs</b></div>
-      <div class="as-sub">⏳ Total missed: <b>${fmtHrs(missHrs)} hrs</b></div></div>
+      <div class="as-sub">🚻 Total restroom: <b>${fmtHMS(restHrs)}</b></div>
+      <div class="as-sub">⏳ Total missed: <b>${fmtHMS(missHrs)}</b></div></div>
     <div class="as-right"><div class="as-brk">${tile('Break 1', r['Break 1'], 15, '')}${tile('Lunch', r['Lunch'], 60, 'lunch')}${tile('Break 2', r['Break 2'], 15, '')}${tile('Break 3', r['Break 3'], 15, '')}${isLact(r.Name) ? tile('Lactation Break 1', r['Lactation 1'], LACTATION_MIN, '') + tile('Lactation Break 2', r['Lactation 2'], LACTATION_MIN, '') : ''}</div>
     <div class="as-chips">${attChipsHtml(est, sm)}</div></div>
   </div>`;
@@ -4196,6 +4196,8 @@ const trackerPct = c => c.pct == null ? '—' : c.pct.toFixed(1) + '%';
 const missedText = x => x.missed ? `${x.missed} min missed${x.estimated ? ' (est. half shift)' : ''}` : '';
 
 /* Hover text: only the actual log-in / log-out times (empty when there is no LOLI data for the day) */
+/* hours -> [h]:mm:ss (hours are not capped at 24) */
+const fmtHMS = h => { const t = Math.round(h * 3600); return Math.floor(t / 3600) + ':' + String(Math.floor(t % 3600 / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
 const fmtHrs = h => { const m = Math.round(h * 60); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
 const actualTip = x => x.autoNcns ? 'NCNS - no log-in / log-out in LOLI Actual' : x.inTime || x.outTime ? `Log-in Time: ${x.inTime || '—'}${x.inDisputed ? ' (disputed)' : ''}\nLog-out Time: ${x.outTime || '—'}${x.outDisputed ? ' (disputed)' : ''}${x.loggedHrs != null ? `\nHours logged in the shift: ${fmtHrs(x.loggedHrs)} hrs` : ''}${x.gapMin ? `\nLogged out during shift: ${fmtHrs(x.gapMin / 60)} hrs` : ''}${(x.inDisputed || x.outDisputed) && x.disputedBy ? `\nDisputed by: ${x.disputedBy}` : ''}${(x.inDisputed || x.outDisputed) && x.disputeReason ? `\nDispute reason: ${x.disputeReason}` : ''}` : '';
 
