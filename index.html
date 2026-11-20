@@ -1608,7 +1608,7 @@ const USERS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tq
 /* Optional: more users typed here instead of in the sheet, e.g. { u: 'AG-7K2Q', n: 'Dela Cruz, Juan', role: 'agent' } */
 const LOCAL_USERS = [];
 const AUTH_KEY = 'ditsc_username';
-const AGENT_TABS = ['announcementsTab', 'agentSumTab', 'metricTab'];     // the only pages an agent can open (Performance Stack Ranking shows the top 10 only)
+const AGENT_TABS = ['announcementsTab', 'agentSumTab', 'metricTab'];     // the only pages an agent can open (Performance Stack Ranking lists every agent)
 let AUTH = null, USERS = [], usersError = '';
 const tabAllowed = id => !AUTH || !AUTH.restricted || AGENT_TABS.includes(id);
 
@@ -1647,8 +1647,6 @@ function applyAccess() {
   document.querySelectorAll('.tabs .tab-btn').forEach(b => b.style.display = r && !AGENT_TABS.includes(b.dataset.tab) ? 'none' : '');
   document.querySelectorAll('.tabs .nav-group').forEach(g => g.style.display = [...g.querySelectorAll('.tab-btn')].some(b => b.style.display !== 'none') ? '' : 'none');
   $('agSumAgent').style.display = r ? 'none' : '';
-  ['metricSupervisor', 'metricSearch'].forEach(id => $(id).style.display = r ? 'none' : '');          // an agent can't filter or search the ranking
-  document.querySelector('#metricTab .daily-summary').style.display = r ? 'none' : '';
   const hint = document.querySelector('#agentSumTab > .view-hint'); if (hint) hint.style.display = r ? 'none' : '';
   if (r) { showTab('agentSumTab'); history.replaceState(null, '', '#agentSumTab'); }
   else TAB_RENDERERS[activeTab]?.();
@@ -3524,10 +3522,7 @@ function buildMetric() {
   if (sups.includes(prevSup)) supSel.value = prevSup;
   const sup = supSel.value, q = up($('metricSearch').value);
 
-  const restricted = AUTH && AUTH.restricted;      // agents only see the top 10 of the whole team
-  const rows = restricted
-    ? (I.total >= 0 ? data.filter(r => typeof metricVal(r[I.total]) === 'number').sort((a, b) => metricVal(b[I.total]) - metricVal(a[I.total])).slice(0, 10) : [])
-    : data.filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
+  const rows = data.filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
   const maxOf = metricHeads.map((_, i) => metricMax(i));
 
   /* Top 3 podium (always by TOTAL, whatever column the table is sorted by) */
