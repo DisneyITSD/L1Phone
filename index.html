@@ -290,6 +290,7 @@ html[data-theme=dark] #agSumQa tr.qa-audit td:first-child{color:#aab4c4}
 .cal-num{font-weight:700;font-size:13px}
 .cal-status{font-weight:700}
 .cal-shift,.cal-note{font-size:11px;opacity:.85}
+.cal-note.cal-act{opacity:1;font-weight:600}
 /* Unavailable time (LBPRR sheet) inside the schedule calendar days */
 .cal-ut{display:flex;flex-direction:column;gap:1px;margin-top:3px;padding-top:3px;border-top:1px dashed rgba(127,127,127,.4);font-size:10.5px}
 .cal-ut div{display:flex;justify-content:space-between;gap:6px;white-space:nowrap}
@@ -2396,6 +2397,19 @@ function attChipsHtml(info, c) {
   return chip('present', `✔ Present: ${c.present}`) + chip('partial', `⏰ Late: ${late}`) + chip('partial', `↘️ Left early: ${early}`) + chip('partial', `⏱ Short hours: ${short}`) +
          chip('absent', `✖ Called off: ${c.absent}${ncns ? ` (NCNS: ${ncns})` : ''}`) + chip('leave', `🌴 Leave: ${c.leave}`);
 }
+/* Actual log-in / log-out printed in the calendar cell (EST, or converted to PH time when the PH view is on) */
+function calActualHtml(a, c, ph) {
+  if (a.autoNcns) return '<div class="cal-note cal-act">❌ No log-in / log-out (NCNS)</div>';
+  if (!a.inTime && !a.outTime) return '';
+  const date = c.estDate || c.date;
+  const inM = parseClock(a.inTime), outM = parseClock(a.outTime);
+  const show = (txt, m, off) => !txt ? '—' : ph && m != null ? phTime(date, m + off) : txt;
+  const outOff = inM != null && outM != null && outM < inM ? 1440 : 0;      // overnight shift: log-out is the next day
+  const zone = ph ? 'PH' : 'EST';
+  return `<div class="cal-note cal-act">🟢 In: ${esc(show(a.inTime, inM, 0))}${a.inDisputed ? ' (disputed)' : ''}</div>`
+       + `<div class="cal-note cal-act">🔴 Out: ${esc(show(a.outTime, outM, outOff))}${a.outDisputed ? ' (disputed)' : ''}${a.outTime ? ' ' + zone : ''}</div>`
+       + ((a.inDisputed || a.outDisputed) && a.disputedBy ? `<div class="cal-note cal-act">📝 Disputed by ${esc(a.disputedBy)}</div>` : '');
+}
 function rosterCalendarHtml({ r, cells, est }, today, ph) {
   const lead = (parseYMD(cells[0].date).getDay() + 6) % 7;
   const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('');
@@ -2411,6 +2425,7 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
       <div class="cal-status">${c.shiftChg ? '🔁 ' : ''}${time}</div>
       ${a.kind === 'off' ? '' : `<div class="cal-status" style="font-size:11px">${a.icon} ${esc(a.text)}</div>`}
       ${a.missed ? `<div class="cal-note">${esc(missedText(a))}</div>` : ''}
+      ${calActualHtml(a, c, ph)}
       ${a.loggedHrs != null ? `<div class="cal-note">⏱ ${fmtHrs(a.loggedHrs)} hrs logged${a.gapMin ? ` · ${fmtHrs(a.gapMin / 60)} logged out` : ''}</div>` : ''}${a.shortDisputed ? '<div class="cal-note">✅ Lost hours dispute approved</div>' : ''}${dayPctHtml(a)}
       ${utHtml(r.Name, c.estDate || c.date)}
       ${c.shiftChg ? `<div class="cal-note">Was ${isOff(c.base) ? 'OFF' : convertShiftRange(c.base)}</div>` : ''}
