@@ -596,6 +596,18 @@ details.ag-sec>summary::after{content:"\25B8";margin-left:0;font-size:14px;font-
 details.ag-sec[open]>summary::after{content:"\25BE"}
 details.ag-sec>summary:hover::after{color:var(--ink)}
 details.ag-sec>summary:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+/* ---------- Username sign-in ---------- */
+#loginGate{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--paper,#f4f6fa)}
+#loginGate[hidden]{display:none}
+#loginGate .lg-card{width:100%;max-width:380px;padding:28px 26px;background:var(--surface,#fff);border:1px solid var(--line,#e5e7eb);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.12);text-align:center}
+#loginGate .lg-title{font-size:20px;font-weight:700;color:var(--ink,#111827);margin:0 0 4px}
+#loginGate .lg-sub{font-size:13px;color:var(--muted,#6b7280);margin:0 0 10px}
+#loginGate .lg-note{font-size:13px;color:var(--ink,#111827);background:rgba(37,99,235,.08);border-radius:8px;padding:8px 10px;margin:0 0 14px}
+#loginGate input{width:100%;padding:11px 12px;font-size:15px;text-align:center;border:1px solid var(--line,#d1d5db);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#111827)}
+#loginGate button{width:100%;margin-top:12px;padding:11px 12px;font-size:15px;font-weight:600;border:0;border-radius:8px;background:var(--blue,#2563eb);color:#fff;cursor:pointer}
+#loginGate .lg-msg{min-height:18px;margin-top:12px;font-size:13px;color:#b91c1c}
+#signOutBtn{display:inline-flex;align-items:center;gap:6px;max-width:220px;white-space:nowrap}
+#signOutBtn span{overflow:hidden;text-overflow:ellipsis}
 .sum-grid3{gap:14px}
 
 /* Dashboard: five lanes in one board */
@@ -928,6 +940,16 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 
 <body>
 
+<div id="loginGate">
+  <form class="lg-card" id="loginForm" autocomplete="off">
+    <h2 class="lg-title">DITSC L1 English</h2>
+    <p class="lg-sub">Enter your username to see your scores.</p>
+    <p class="lg-note">📌 Please use your <b>Disney Hub ID</b> as your username.</p>
+    <input type="text" id="loginUser" placeholder="Username (Disney Hub ID)" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Username" autofocus>
+    <button type="submit" id="loginBtn">Continue</button>
+    <div class="lg-msg" id="loginMsg" role="alert"></div>
+  </form>
+</div>
 <div class="app">
 <div class="scrim" onclick="document.body.classList.remove('nav-open')"></div>
 <button type="button" class="side-toggle" id="sideToggle" aria-label="Hide menu" title="Hide menu">‹</button>
@@ -961,6 +983,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   <button class="menu-btn" aria-label="Open menu" onclick="document.body.classList.add('nav-open')">☰</button>
   <div><div class="crumb" id="pageCrumb"></div><h1 id="pageTitle"></h1></div>
   <div class="head-tools">
+    <button id="signOutBtn" type="button" hidden title="Sign out" onclick="signOut()">⎋ <span id="whoAmI"></span></button>
     <button id="refreshBtn" onclick="refreshAttendanceData(true)" title="Refresh data" aria-label="Refresh data">↻</button>
     <div class="head-clock"><span id="liveClock">--:--:--</span><span id="lastUpdated"></span></div>
     <div class="theme-seg" role="group" aria-label="Color theme"><button data-mode="light">Light</button><button data-mode="dark">Dark</button><button data-mode="system">System</button></div>
@@ -1033,6 +1056,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
+  <div id="agAnnouncements"></div>
   <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick the agent in the schedule at the top, then tick one or more months (or Year to date) in the Month box under “How attendance is calculated”; everything below is calculated automatically.</div>
   <div id="agSumSchedule">
     <h3 class="sum-h" style="margin-top:4px">📅 Schedule</h3>
@@ -1575,9 +1599,83 @@ function sortBy(view, col) {
 }
 
 /* =====================================================================
+   USERNAME SIGN-IN (quick version)
+   The "Users" tab of the Google Sheet lists who can sign in: Username | Agent Name | Role (optional).
+   Role blank or "Agent" = sees only their own Agent Summary. "Admin" (or Supervisor / Manager) = sees every page.
+   NOTE: this hides other people's pages in the browser. The sheet itself is still readable by anyone who has its link.
+   ===================================================================== */
+const USERS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Users')}`;
+/* Optional: more users typed here instead of in the sheet, e.g. { u: 'AG-7K2Q', n: 'Dela Cruz, Juan', role: 'agent' } */
+const LOCAL_USERS = [];
+const AUTH_KEY = 'ditsc_username';
+const AGENT_TABS = ['announcementsTab', 'agentSumTab', 'metricTab'];     // the only pages an agent can open (Performance Stack Ranking shows the top 10 only)
+let AUTH = null, USERS = [], usersError = '';
+const tabAllowed = id => !AUTH || !AUTH.restricted || AGENT_TABS.includes(id);
+
+async function loadUsers() {
+  usersError = '';
+  let list = [];
+  try {
+    const rows = await fetchCSV(USERS_URL, { raw: true });
+    const h = rows.findIndex(r => r.some(x => /user/i.test(clean(x))));
+    if (h < 0) throw new Error('no "Username" column in the Users tab');
+    const f = (re, not) => rows[h].findIndex(x => re.test(clean(x)) && !(not && not.test(clean(x))));
+    const cu = f(/user/i), cn = f(/name/i, /user/i) >= 0 ? f(/name/i, /user/i) : f(/agent/i), cr = f(/role|access/i);
+    if (cn < 0) throw new Error('no "Agent Name" column in the Users tab');
+    rows.slice(h + 1).forEach(r => {
+      const u = clean(r[cu]), n = clean(r[cn]);
+      if (u && n) list.push({ u, n, role: cr >= 0 ? clean(r[cr]) : '' });
+    });
+  } catch (e) { usersError = e.message; }
+  USERS = [...list, ...LOCAL_USERS.map(x => ({ u: x.u, n: x.n, role: x.role || '' }))];
+}
+const gateMsg = t => { $('loginMsg').textContent = t || ''; };
+function trySignIn(typed) {
+  const key = clean(typed).toLowerCase();
+  const u = key && USERS.find(x => x.u.toLowerCase() === key);
+  if (!u) return false;
+  AUTH = { username: u.u, name: u.n, restricted: !/admin|supervisor|manager|full/i.test(u.role) };
+  try { localStorage.setItem(AUTH_KEY, u.u); } catch (e) {}
+  applyAccess();
+  return true;
+}
+function applyAccess() {
+  $('loginGate').hidden = true;
+  $('signOutBtn').hidden = false;
+  $('whoAmI').textContent = AUTH.name + ' · Sign out';
+  const r = AUTH.restricted;
+  document.querySelectorAll('.tabs .tab-btn').forEach(b => b.style.display = r && !AGENT_TABS.includes(b.dataset.tab) ? 'none' : '');
+  document.querySelectorAll('.tabs .nav-group').forEach(g => g.style.display = [...g.querySelectorAll('.tab-btn')].some(b => b.style.display !== 'none') ? '' : 'none');
+  $('agSumAgent').style.display = r ? 'none' : '';
+  ['metricSupervisor', 'metricSearch'].forEach(id => $(id).style.display = r ? 'none' : '');          // an agent can't filter or search the ranking
+  document.querySelector('#metricTab .daily-summary').style.display = r ? 'none' : '';
+  const hint = document.querySelector('#agentSumTab > .view-hint'); if (hint) hint.style.display = r ? 'none' : '';
+  if (r) { showTab('agentSumTab'); history.replaceState(null, '', '#agentSumTab'); }
+  else TAB_RENDERERS[activeTab]?.();
+}
+function signOut() {
+  try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
+  location.reload();
+}
+async function authBoot() {
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    gateMsg('');
+    if (!USERS.length) { $('loginBtn').disabled = true; await loadUsers(); $('loginBtn').disabled = false; }
+    if (!USERS.length) return gateMsg(usersError ? `Couldn’t load the user list (${usersError}). Please try again.` : 'No users have been set up yet.');
+    if (!trySignIn($('loginUser').value)) gateMsg('That username wasn’t found. Please check your Disney Hub ID and try again.');
+  });
+  await loadUsers();
+  let saved = ''; try { saved = localStorage.getItem(AUTH_KEY) || ''; } catch (e) {}
+  if (saved && !trySignIn(saved)) { try { localStorage.removeItem(AUTH_KEY); } catch (e) {} }
+  if (!AUTH) { if (usersError && !USERS.length) gateMsg(`Couldn’t load the user list (${usersError}).`); $('loginUser').focus(); }
+}
+
+/* =====================================================================
    TABS
    ===================================================================== */
 function showTab(id) {
+  if (!tabAllowed(id)) id = 'agentSumTab';          // agents can only open their own Agent Summary
   document.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
   $(id).hidden = false;
   activeTab = id;
@@ -1833,6 +1931,7 @@ function renderAll() {
   loadSup();
   renderHighAnnouncements();
   renderLatestAnnouncement();
+  renderAgentAnnouncements();
   TAB_RENDERERS[activeTab]?.();
 }
 
@@ -1967,34 +2066,47 @@ function openPictureBox(src) {
   document.addEventListener('keydown', onKey);
   document.body.appendChild(box);
 }
-function buildPictureAnnouncements() {
-  const rows = pictureAnnouncements($('annScope').value === 'all');
-  if (!rows.length) { $('announcementsList').innerHTML = '<div class="pa-empty">📢 No announcements right now</div>'; return; }
-  $('announcementsList').innerHTML = '<div class="pa-grid">' + rows.map((a, i) => {
-    return `<div class="pa-card${a.expired ? ' pa-expired' : ''}">
+/* The picture cards (shared by the Announcements page and the Agent Summary page) */
+function picGridHtml(rows) {
+  return '<div class="pa-grid">' + rows.map(a => `<div class="pa-card${a.expired ? ' pa-expired' : ''}">
       <img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy" data-src="${esc(a.image)}"
            onerror="this.outerHTML='<div class=&quot;pa-missing&quot;>Picture not found:<br>${esc(a.image)}</div>'">
       <div class="pa-body">
         <div class="pa-title">${esc(a.title)}${a.expired ? ' <span style="font-weight:400;font-size:12px;color:var(--muted)">(expired)</span>' : ''}</div>
         ${a.message ? `<div class="pa-msg">${esc(a.message)}</div>` : ''}
-      </div></div>`;
-  }).join('') + '</div>';
-  $('announcementsList').querySelectorAll('img[data-src]').forEach(img => img.addEventListener('click', () => openPictureBox(img.dataset.src)));
+      </div></div>`).join('') + '</div>';
+}
+const picBindClicks = el => el.querySelectorAll('img[data-src]').forEach(img => img.addEventListener('click', () => openPictureBox(img.dataset.src)));
+function buildPictureAnnouncements() {
+  const rows = pictureAnnouncements($('annScope').value === 'all');
+  if (!rows.length) { $('announcementsList').innerHTML = '<div class="pa-empty">📢 No announcements right now</div>'; return; }
+  $('announcementsList').innerHTML = picGridHtml(rows);
+  picBindClicks($('announcementsList'));
+}
+/* Agent Summary: the active announcements are shown right at the top, so agents don't have to look for them */
+function renderAgentAnnouncements() {
+  const el = $('agAnnouncements'); if (!el) return;
+  const rows = pictureAnnouncements(false);
+  el.innerHTML = '<h3 class="sum-h" style="margin-top:4px">📢 Announcements</h3>' +
+    (rows.length ? picGridHtml(rows) : '<div class="pa-empty">📢 No announcements right now</div>');
+  picBindClicks(el);
 }
 /* Newest active announcement, shown at the top of the Summary page */
 function renderLatestAnnouncement() {
-  const el = $('latestAnnouncement'); if (!el) return;
   const a = pictureAnnouncements(false)[0];
-  if (!a) { el.hidden = true; el.innerHTML = ''; return; }
-  el.hidden = false;
-  el.innerHTML = `<div class="pa-strip" role="button" tabindex="0">
+  ['latestAnnouncement'].forEach(id => {
+    const el = $(id); if (!el) return;
+    if (!a) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    el.innerHTML = `<div class="pa-strip" role="button" tabindex="0">
     <img src="${esc(a.image)}" alt="" onerror="this.style.display='none'">
     <div><div class="pa-s-l">📢 Latest announcement</div><div class="pa-s-t">${esc(a.title)}</div></div>
     <span class="pa-s-go">View →</span></div>`;
-  const go = () => { document.querySelector('.tab-btn[data-tab="announcementsTab"]')?.click(); };
-  const strip = el.firstElementChild;
-  strip.addEventListener('click', go);
-  strip.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    const go = () => { document.querySelector('.tab-btn[data-tab="announcementsTab"]')?.click(); };
+    const strip = el.firstElementChild;
+    strip.addEventListener('click', go);
+    strip.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
 }
 
 function renderHighAnnouncements() {
@@ -3412,7 +3524,10 @@ function buildMetric() {
   if (sups.includes(prevSup)) supSel.value = prevSup;
   const sup = supSel.value, q = up($('metricSearch').value);
 
-  const rows = data.filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
+  const restricted = AUTH && AUTH.restricted;      // agents only see the top 10 of the whole team
+  const rows = restricted
+    ? (I.total >= 0 ? data.filter(r => typeof metricVal(r[I.total]) === 'number').sort((a, b) => metricVal(b[I.total]) - metricVal(a[I.total])).slice(0, 10) : [])
+    : data.filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
   const maxOf = metricHeads.map((_, i) => metricMax(i));
 
   /* Top 3 podium (always by TOTAL, whatever column the table is sorted by) */
@@ -4242,8 +4357,9 @@ function buildAgentSummary() {
   agSumMonths = D.yms;
   /* Agent list (shares the choice of "My attendance") */
   let saved = ''; try { saved = localStorage.getItem(MY_AGENT_KEY) || ''; } catch (e) {}
-  const cur = sel.value || saved;
-  const names = D.agents.map(a => a.name).sort((a, b) => a.localeCompare(b));
+  let cur = sel.value || saved;
+  let names = D.agents.map(a => a.name).sort((a, b) => a.localeCompare(b));
+  if (AUTH && AUTH.restricted) { names = names.filter(n => normName(n) === normName(AUTH.name)); cur = names[0] || ''; }   // an agent only ever sees their own row
   sel.innerHTML = '<option value="">Select agent…</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
   sel.value = names.includes(cur) ? cur : '';
   /* Months: default = latest month that has scores */
@@ -4256,7 +4372,7 @@ function buildAgentSummary() {
   if (!agSumSel.size) agSumSel.add(D.yms[D.yms.length - 1]);
   renderAgSumMonthPicker();
   const a = D.agents.find(x => x.name === sel.value);
-  if (!a) { box.innerHTML = '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; return; }
+  if (!a) { box.innerHTML = AUTH && AUTH.restricted ? '<div class="my-lbl">We couldn’t find scores for your name yet. Please ask your supervisor to check that your name in the Users tab matches the scorecard.</div>' : '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; return; }
   try { localStorage.setItem(MY_AGENT_KEY, a.name); } catch (e) {}
 
   const selYm = D.yms.filter(m => agSumSel.has(m)), multi = selYm.length > 1;
@@ -4388,6 +4504,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initQa();
   initSummary();
   initMcsMonth();
+  authBoot();
 
   const today = ymd(estNow());
   ['ptoDate', 'calledOffDate', 'scheduleDate', 'supervisorDate', 'forecastDate']
