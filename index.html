@@ -2420,9 +2420,9 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
       ${canDispute(a) ? disputeLinkHtml(r.Name, c.estDate || c.date, c.sup || r.Supervisor) : ''}</div>`;
   }).join('');
   const sm = trackerSummary(est), nowD = ymd(estNow());
-  /* Month totals for the card: restroom time from the LBPRR sheet, missed hours = minutes lost on Late / Left early / Short hours days */
+  /* Month totals for the card: restroom time from the LBPRR sheet, lost hours = Short hours time only */
   const restHrs = cells.reduce((t, c) => { const o = utIdx.get(normName(r.Name) + '|' + (c.estDate || c.date)); const s = o ? utSecs(o.rest) : null; return t + (s || 0); }, 0) / 3600;
-  const missHrs = est.filter(x => x.kind === 'partial').reduce((t, x) => t + (x.missed || 0), 0) / 60;   // late + left early + logged-out minutes only; Called off / NCNS days are not counted
+  const lostHrs = est.reduce((t, x) => t + (x.gapMin || 0), 0) / 60;   // Short hours only: time logged out during the shift (late / left early / Called off / NCNS are not counted)
   const tile = (label, v, dur, cls) => {
     const s = tm(v); if (s == null) return '';
     const est = formatTimeRange(v, dur), phr = phRange(nowD, s, dur);
@@ -2433,7 +2433,7 @@ function rosterCalendarHtml({ r, cells, est }, today, ph) {
     <div><div class="as-pct" style="color:${sm.pct == null ? 'inherit' : sm.pct >= 95 ? '#16a34a' : sm.pct >= 91 ? '#d97706' : '#dc2626'}">${trackerPct(sm)}</div><div class="as-lbl">Attendance this month${ph ? ' (EST days)' : ''}</div>
       <div class="as-sub">${sm.hoursWorked.toFixed(1)} / ${sm.hoursExp.toFixed(1)} hrs${chg ? ' · 🔁 ' + chg + ' changed' : ''}</div>
       <div class="as-sub">🚻 Total restroom: <b>${fmtHMS(restHrs)}</b></div>
-      <div class="as-sub">⏳ Total missed: <b>${fmtHMS(missHrs)}</b></div></div>
+      <div class="as-sub">⏳ Lost Hours: <b>${fmtHMS(lostHrs)}</b></div></div>
     <div class="as-right"><div class="as-brk">${tile('Break 1', r['Break 1'], 15, '')}${tile('Lunch', r['Lunch'], 60, 'lunch')}${tile('Break 2', r['Break 2'], 15, '')}${tile('Break 3', r['Break 3'], 15, '')}${isLact(r.Name) ? tile('Lactation Break 1', r['Lactation 1'], LACTATION_MIN, '') + tile('Lactation Break 2', r['Lactation 2'], LACTATION_MIN, '') : ''}</div>
     <div class="as-chips">${attChipsHtml(est, sm)}</div></div>
   </div>`;
