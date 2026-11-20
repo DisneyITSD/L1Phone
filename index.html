@@ -1051,7 +1051,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
-  <div id="agAnnouncements"></div>
   <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick the agent in the schedule at the top, then tick one or more months (or Year to date) in the Month box under “How attendance is calculated”; everything below is calculated automatically.</div>
   <div id="agSumSchedule">
     <h3 class="sum-h" style="margin-top:4px">📅 Schedule</h3>
@@ -1924,7 +1923,6 @@ function renderAll() {
   loadSup();
   renderHighAnnouncements();
   renderLatestAnnouncement();
-  renderAgentAnnouncements();
   TAB_RENDERERS[activeTab]?.();
 }
 
@@ -2075,14 +2073,6 @@ function buildPictureAnnouncements() {
   if (!rows.length) { $('announcementsList').innerHTML = '<div class="pa-empty">📢 No announcements right now</div>'; return; }
   $('announcementsList').innerHTML = picGridHtml(rows);
   picBindClicks($('announcementsList'));
-}
-/* Agent Summary: the active announcements are shown right at the top, so agents don't have to look for them */
-function renderAgentAnnouncements() {
-  const el = $('agAnnouncements'); if (!el) return;
-  const rows = pictureAnnouncements(false);
-  el.innerHTML = '<h3 class="sum-h" style="margin-top:4px">📢 Announcements</h3>' +
-    (rows.length ? picGridHtml(rows) : '<div class="pa-empty">📢 No announcements right now</div>');
-  picBindClicks(el);
 }
 /* Newest active announcement, shown at the top of the Summary page */
 function renderLatestAnnouncement() {
