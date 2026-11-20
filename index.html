@@ -4229,8 +4229,8 @@ function disputeUrl(name, date, supervisor, by = name) {
 /* The link shown on a finished calendar day; date is the shift start date in EST */
 function disputeLinkHtml(name, date, supervisor) {
   const filled = DISPUTE_ENTRY.agent && DISPUTE_ENTRY.date;
-  const tip = filled ? 'Open the dispute form for this day' : `Open the dispute form and enter: ${name} · shift date ${date} (EST)`;
-  return `<a class="cal-dispute" href="${esc(disputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="${esc(tip)}" onclick="event.stopPropagation()">🛠 Dispute</a>`;
+  const tip = filled ? 'Dispute the log-in / log-out time for this day' : `Open the log-in / log-out dispute form and enter: ${name} · shift date ${date} (EST)`;
+  return `<a class="cal-dispute" href="${esc(disputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="${esc(tip)}" onclick="event.stopPropagation()">🛠 Dispute log-in / log-out</a>`;
 }
 /* ---------- Short hours (lost hours) dispute form ----------
    A second Google Form, only for time logged out during the shift. Questions: Supervisor | Submitted by | Agent Name | Shift Date (EST) | Reason (what happened).
