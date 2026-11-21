@@ -258,7 +258,15 @@ html[data-theme=dark] #agSumQa tr.qa-audit td:first-child{color:#aab4c4}
 .my-actions .my-btn{display:inline-block;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer}
 .my-actions .my-btn:hover{border-color:#0d6efd;color:#0d6efd}
 .cal-dispute{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;color:#2563eb;text-decoration:none}
+.cal-dispute{cursor:pointer}
 .cal-dispute:hover{text-decoration:underline}
+.dm-back{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.dm-back[hidden]{display:none}
+.dm-box{background:#fff;color:#1f2937;border-radius:12px;width:min(760px,100%);height:min(92vh,900px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dm-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:14px}
+.dm-x{border:0;background:transparent;font-size:18px;cursor:pointer;color:inherit;padding:4px 8px;border-radius:6px}
+.dm-x:hover{background:#f3f4f6}
+.dm-box iframe{flex:1;width:100%;border:0;background:#fff}
 .cal-note.cal-pct{opacity:1;font-weight:700;background:none}
 .cal-note.cal-pct.st-present{color:#2e7d32}
 .cal-note.cal-pct.st-partial{color:#e65100}
@@ -4233,19 +4241,20 @@ const DISPUTE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeOJQdLCQ_J3s
    These are already set for the current dispute form; update them only if the form is rebuilt. Left empty, the form opens blank. */
 const DISPUTE_ENTRY = { supervisor: 'entry.536377937', agent: 'entry.699153341', date: 'entry.28227940', submittedBy: 'entry.1856424629' };
 
-function disputeUrl(name, date, supervisor, by = name) {
+function disputeUrl(name, date, supervisor, by = name, embedded) {
   const q = [];
   if (DISPUTE_ENTRY.supervisor && supervisor) q.push(`${DISPUTE_ENTRY.supervisor}=${encodeURIComponent(supervisor)}`);
   if (DISPUTE_ENTRY.agent && name) q.push(`${DISPUTE_ENTRY.agent}=${encodeURIComponent(name)}`);
   if (DISPUTE_ENTRY.submittedBy && by) q.push(`${DISPUTE_ENTRY.submittedBy}=${encodeURIComponent(by)}`);
   if (DISPUTE_ENTRY.date && date) q.push(`${DISPUTE_ENTRY.date}=${encodeURIComponent(date)}`);     // yyyy-mm-dd
-  return DISPUTE_FORM_URL + (q.length ? '?usp=pp_url&' + q.join('&') : '');
+  const all = (embedded ? ['embedded=true'] : []).concat(q.length ? ['usp=pp_url', ...q] : []);     // embedded=true = the compact version for the pop-up
+  return DISPUTE_FORM_URL.split('?')[0] + (all.length ? '?' + all.join('&') : '');
 }
 /* The link shown on a finished calendar day; date is the shift start date in EST */
 function disputeLinkHtml(name, date, supervisor) {
   const filled = DISPUTE_ENTRY.agent && DISPUTE_ENTRY.date;
   const tip = filled ? 'Dispute the log-in / log-out time for this day' : `Open the log-in / log-out dispute form and enter: ${name} · shift date ${date} (EST)`;
-  return `<a class="cal-dispute" href="${esc(disputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="${esc(tip)}" onclick="event.stopPropagation()">🛠 Dispute log-in / log-out</a>`;
+  return `<a class="cal-dispute" href="${esc(disputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" data-n="${esc(name)}" data-d="${esc(date)}" data-s="${esc(supervisor || '')}" title="${esc(tip)}" onclick="event.preventDefault(); event.stopPropagation(); openDisputeModal(this.dataset.n, this.dataset.d, this.dataset.s)">🛠 Dispute log-in / log-out</a>`;
 }
 /* ---------- Short hours (lost hours) dispute form ----------
    A second Google Form, only for time logged out during the shift. Questions: Supervisor | Submitted by | Agent Name | Shift Date (EST) | Reason (what happened).
@@ -4253,18 +4262,47 @@ function disputeLinkHtml(name, date, supervisor) {
    SHORT_FORM_URL        = the form's link (ends with /viewform). Empty = no dispute link is shown on short-hours days.
    SHORT_ENTRY           = optional pre-fill field numbers (⋮ menu › Get pre-filled link), same idea as DISPUTE_ENTRY above.
    SHORT_DISPUTE_GID     = the number after gid= in the response tab's address bar. Empty = nothing is read. */
-function shortDisputeUrl(name, date, supervisor) {
+function shortDisputeUrl(name, date, supervisor, embedded) {
   const q = [];
   if (SHORT_ENTRY.supervisor && supervisor) q.push(`${SHORT_ENTRY.supervisor}=${encodeURIComponent(supervisor)}`);
   if (SHORT_ENTRY.agent && name) q.push(`${SHORT_ENTRY.agent}=${encodeURIComponent(name)}`);
   if (SHORT_ENTRY.submittedBy && name) q.push(`${SHORT_ENTRY.submittedBy}=${encodeURIComponent(name)}`);
   if (SHORT_ENTRY.date && date) q.push(`${SHORT_ENTRY.date}=${encodeURIComponent(date)}`);
-  return SHORT_FORM_URL + (q.length ? '?usp=pp_url&' + q.join('&') : '');
+  const all = (embedded ? ['embedded=true'] : []).concat(q.length ? ['usp=pp_url', ...q] : []);
+  return SHORT_FORM_URL.split('?')[0] + (all.length ? '?' + all.join('&') : '');
 }
 function shortDisputeLinkHtml(name, date, supervisor) {
   if (!SHORT_FORM_URL) return '';
-  return `<a class="cal-dispute" href="${esc(shortDisputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" title="Open the short hours dispute form for this day" onclick="event.stopPropagation()">🛠 Dispute lost hours</a>`;
+  return `<a class="cal-dispute" href="${esc(shortDisputeUrl(name, date, supervisor))}" target="_blank" rel="noopener" data-n="${esc(name)}" data-d="${esc(date)}" data-s="${esc(supervisor || '')}" title="Dispute the lost hours for this day" onclick="event.preventDefault(); event.stopPropagation(); openDisputeModal(this.dataset.n, this.dataset.d, this.dataset.s, 'short')">🛠 Dispute lost hours</a>`;
 }
+/* Both dispute forms open in this pop-up (the Google Form inside a frame) instead of a new browser tab */
+function openDisputeModal(name, date, supervisor, kind) {
+  const short = kind === 'short';
+  const title = short ? '🛠 Lost hours dispute' : '🛠 Log-in / log-out dispute';
+  let m = $('disputeModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'disputeModal'; m.className = 'dm-back'; m.hidden = true;
+    m.innerHTML = '<div class="dm-box" role="dialog" aria-modal="true" aria-label="Dispute">' +
+      '<div class="dm-head"><b id="disputeTitle"></b><button type="button" class="dm-x" aria-label="Close" onclick="closeDisputeModal()">✕</button></div>' +
+      '<iframe id="disputeFrame" title="Dispute form"></iframe></div>';
+    m.addEventListener('click', e => { if (e.target === m) closeDisputeModal(); });
+    document.body.appendChild(m);
+  }
+  $('disputeTitle').textContent = title;
+  m.querySelector('.dm-box').setAttribute('aria-label', title);
+  $('disputeFrame').src = short ? shortDisputeUrl(name, date, supervisor, true) : disputeUrl(name, date, supervisor, name, true);
+  m.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closeDisputeModal() {
+  const m = $('disputeModal');
+  if (!m) return;
+  m.hidden = true;
+  $('disputeFrame').src = 'about:blank';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('disputeModal') && !$('disputeModal').hidden) closeDisputeModal(); });
 /* Approved short-hours disputes: agent + shift date -> { reason, by }. Columns are found by their header words. */
 function buildShortIndex(rows) {
   const m = new Map();
