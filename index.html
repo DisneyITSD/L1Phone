@@ -938,7 +938,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 .kpi-line b{color:var(--ink);font-size:14px}
 .kpi-goal{color:var(--blue);font-weight:700;font-size:13px}
 .kpi-text{margin-top:2px;color:var(--muted);font-size:13.5px;line-height:1.55}
-.kpi-wt{color:var(--muted);font-weight:600;font-size:12.5px}
+.kpi-wt{background:var(--blue);color:#fff;font-weight:800;font-size:13px;line-height:1;padding:4px 11px;border-radius:999px;letter-spacing:.2px;box-shadow:0 1px 3px rgba(37,99,235,.35)}
 .kpi-outro{margin:8px 0 0;padding-top:9px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;font-style:italic}
 </style>
 </head>
@@ -3508,34 +3508,45 @@ const metricMonthNums = labels => labels.map(l => SS_MON.findIndex(x => String(l
 const metricShowCols = monthNums => METRIC_SHOW.filter(n => !METRIC_MONTH_ONLY[n] || METRIC_MONTH_ONLY[n].some(m => monthNums.includes(m)))
   .map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0);
 
-/* Scorecard weights (points out of 100). Shown under the column titles only when every ticked month is in METRIC_WEIGHT_MONTHS. */
-const METRIC_WEIGHTS = { 'attendance': 35, 'call and ticket quality': 25, 'work rate': 15, 'fcr': 15, 'compliance': 5, 'misroute rate': 5, 'total': 100 };
-const METRIC_WEIGHT_MONTHS = [11];
+/* Scorecard weights (points out of 100) by month: November onward (Compliance added) and October backwards.
+   A set is used only when every ticked month belongs to it; a mix of the two shows no weights. */
+const METRIC_WEIGHT_SETS = [
+  { months: [11], w: { 'attendance': 35, 'call and ticket quality': 25, 'work rate': 15, 'fcr': 15, 'compliance': 5, 'misroute rate': 5, 'total': 100 } },
+  { months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], w: { 'attendance': 35, 'call and ticket quality': 25, 'work rate': 25, 'fcr': 10, 'misroute rate': 5, 'total': 100 } }
+];
+const metricWeightsFor = monthNums => monthNums.length ? (METRIC_WEIGHT_SETS.find(st => monthNums.every(m => st.months.includes(m))) || {}).w || null : null;
 const metricWeightHtml = (i, monthNums) => {
   const sheetW = metricWeights[i] || '';
   if (/^\d+(\.\d+)?%$/.test(sheetW)) return `<small>${esc(sheetW)}</small>`;       // a weight typed in the sheet wins
-  const w = METRIC_WEIGHTS[String(metricHeads[i] || '').toLowerCase().trim()];
-  return w != null && monthNums.length && monthNums.every(m => METRIC_WEIGHT_MONTHS.includes(m)) ? `<small>${w} pts</small>` : '';
+  const W = metricWeightsFor(monthNums), w = W && W[String(metricHeads[i] || '').toLowerCase().trim()];
+  return w != null ? `<small>(${w})</small>` : '';
 };
 
 /* "Your targets for the month": one card, filled into every .kpi-card on the page */
 const KPI_ITEMS = [
-  ['Attendance', 'Aim for 95% or higher', 'The share of your scheduled days that you showed up. Being there on your scheduled days keeps the whole team’s day running smoothly.'],
-  ['Call and Ticket Quality', 'Aim for 95% or higher', 'Your score from reviews of your calls and tickets. It shows how closely you’re following our quality standards.'],
-  ['FCR (First Contact Resolution)', 'Aim for 82% or higher', 'How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.'],
-  ['Work Rate', 'Aim for 75% or higher', 'How much of your logged-in time goes to actual work. About 25% of the day is already set aside for breaks and other activities.'],
-  ['Ticket Compliance', 'Aim for 100% or higher', 'Create a ticket for every call you take. Your tickets should match or beat your calls, so everything is documented.'],
-  ['Misroute Rate', 'Aim for below 1.030%', 'How often your tickets end up with the wrong team. The lower the better, so take a moment to triage each one right.']
+  ['Attendance', 'attendance', 'Aim for 95% or higher', 'The share of your scheduled days that you showed up. Being there on your scheduled days keeps the whole team’s day running smoothly.'],
+  ['Call and Ticket Quality', 'call and ticket quality', 'Aim for 95% or higher', 'Your score from reviews of your calls and tickets. It shows how closely you’re following our quality standards.'],
+  ['FCR (First Contact Resolution)', 'fcr', 'Aim for 82% or higher', 'How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.'],
+  ['Work Rate', 'work rate', 'Aim for 75% or higher', 'How much of your logged-in time goes to actual work. About 25% of the day is already set aside for breaks and other activities.'],
+  ['Ticket Compliance', 'compliance', 'Aim for 100% or higher', 'Create a ticket for every call you take. Your tickets should match or beat your calls, so everything is documented.'],
+  ['Misroute Rate', 'misroute rate', 'Aim for below 1.030%', 'How often your tickets end up with the wrong team. The lower the better, so take a moment to triage each one right.']
 ];
+/* Months ticked on the page this card sits on (the weights follow them) */
+function kpiMonthNums(card) {
+  try {
+    if (card.id === 'kpiCardMetric') return metricMonthNums([...metricSel]);
+    if (card.id === 'kpiCardAgent') return [...agSumSel].map(ym => +ym.slice(5, 7));
+  } catch (e) {}
+  return [];
+}
 function renderKpiCards() {
-  const wts = ['Attendance', 'Call and Ticket Quality', 'Work Rate', 'FCR', 'Compliance', 'Misroute Rate']
-    .map(n => `${n} ${METRIC_WEIGHTS[n.toLowerCase()]}`).join(' · ');
-  const html = '<summary class="kpi-head"><span>🎯 Your targets for the month</span><span class="kpi-chev" aria-hidden="true"></span></summary>' +
-    '<div class="kpi-body"><p class="kpi-intro">Here’s what we’re aiming for each month, and what each number means for you.</p><ul class="kpi-list">' +
-    KPI_ITEMS.map(([n, g, t]) => `<li><div class="kpi-line"><b>${n}</b><span class="kpi-goal">${g}</span></div><div class="kpi-text">${t}</div></li>`).join('') +
-    `<li><div class="kpi-line"><b>Stack ranking weights</b><span class="kpi-goal">Total ${METRIC_WEIGHTS.total} points</span></div><div class="kpi-text">Your stack ranking score is built from these points: ${wts}. This is the split from November, when Compliance was added.</div></li>` +
-    '</ul><p class="kpi-outro">Small habits, steady results. Keep it up! 💪</p></div>';
-  document.querySelectorAll('details.kpi-card').forEach(d => { d.innerHTML = html; });
+  document.querySelectorAll('details.kpi-card').forEach(d => {
+    const W = metricWeightsFor(kpiMonthNums(d));
+    d.innerHTML = '<summary class="kpi-head"><span>🎯 Your targets for the month</span><span class="kpi-chev" aria-hidden="true"></span></summary>' +
+      '<div class="kpi-body"><p class="kpi-intro">Here’s what we’re aiming for each month, and what each number means for you.</p><ul class="kpi-list">' +
+      KPI_ITEMS.map(([n, k, g, t]) => `<li><div class="kpi-line"><b>${n}</b><span class="kpi-goal">${g}</span>${W && W[k] != null ? `<span class="kpi-wt" title="Points this metric is worth in the stack ranking">${W[k]} pts</span>` : ''}</div><div class="kpi-text">${t}</div></li>`).join('') +
+      '</ul><p class="kpi-outro">Small habits, steady results. Keep it up! 💪</p></div>';
+  });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderKpiCards); else renderKpiCards();
 
@@ -3558,6 +3569,7 @@ function buildMetric() {
   if (!metricSel.size && months.length) metricSel.add(months[months.length - 1]);
   $('metricMonthWrap').hidden = !months.length;
   renderMetricMonthPicker(months);
+  renderKpiCards();
 
   const inMonth = metricRows.filter(r => !months.length || metricSel.has(r[I.month]));
   const data = metricSel.size > 1 ? metricAggregate(inMonth) : inMonth;
@@ -4482,6 +4494,7 @@ function buildAgentSummary() {
   agSumSel = new Set([...agSumSel].filter(m => D.yms.includes(m)));
   if (!agSumSel.size) agSumSel.add(D.yms[D.yms.length - 1]);
   renderAgSumMonthPicker();
+  renderKpiCards();
   const a = D.agents.find(x => x.name === sel.value);
   if (!a) { box.innerHTML = AUTH && AUTH.restricted ? '<div class="my-lbl">We couldn’t find scores for your name yet. Please ask your supervisor to check that your name in the Users tab matches the scorecard.</div>' : '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; $('kpiCardAgent').hidden = true; return; }
   try { localStorage.setItem(MY_AGENT_KEY, a.name); } catch (e) {}
