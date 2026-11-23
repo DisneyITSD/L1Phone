@@ -3407,7 +3407,7 @@ function buildSsStack(selYms, supBy) {
     return (dir * (typeof x === 'string' || typeof y === 'string' ? String(x).localeCompare(String(y)) : x - y)) || String(a[I.agent]).localeCompare(String(b[I.agent]));
   });
 
-  const cols = METRIC_SHOW.map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0);
+  const cols = metricShowCols(selYms.map(ym => +ym.slice(5, 7)));
   const isPct = v => /^\d+(\.\d+)?%$/.test(v || '');
   const arrow = i => sc === i ? (col >= 0 ? (asc ? ' ▲' : ' ▼') : ' ▼') : '';
   table.tHead.innerHTML = '<tr>' + cols.map(i => `<th onclick="ssStackSortBy(${i})">${esc(metricHeads[i])}${arrow(i)}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`).join('') + '</tr>';
@@ -3511,7 +3511,12 @@ function mcsBand(head, v, months) {
 }
 
 /* Columns shown in the Performance Stack Ranking table, in this order (matched by header name) */
-const METRIC_SHOW = ['agent name', 'attendance', 'call and ticket quality', 'fcr', 'misroute rate', 'work rate', 'total', 'supervisor'];
+const METRIC_SHOW = ['agent name', 'attendance', 'call and ticket quality', 'fcr', 'misroute rate', 'work rate', 'compliance', 'total', 'supervisor'];
+/* Columns that only exist for certain months: header name -> month number (11 = November). Shown only while that month is ticked. */
+const METRIC_MONTH_ONLY = { 'compliance': [11] };
+const metricMonthNums = labels => labels.map(l => SS_MON.findIndex(x => String(l).toLowerCase().includes(x)) + 1);
+const metricShowCols = monthNums => METRIC_SHOW.filter(n => !METRIC_MONTH_ONLY[n] || METRIC_MONTH_ONLY[n].some(m => monthNums.includes(m)))
+  .map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0);
 
 function buildMetric() {
   const table = $('metricTable');
@@ -3589,7 +3594,7 @@ function buildMetric() {
   }
 
   /* Only the columns in METRIC_SHOW are displayed */
-  const cols = METRIC_SHOW.map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0);
+  const cols = metricShowCols(metricMonthNums([...metricSel]));
   const isPct = v => /^\d+(\.\d+)?%$/.test(v || '');
   table.tHead.innerHTML = '<tr>' + cols.map(i =>
     `<th onclick="sortBy('metric',${i})">${esc(metricHeads[i])}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`
@@ -4517,7 +4522,7 @@ function buildAgentSummary() {
 
   /* Performance Stack Ranking: same as the table above (the agent's rows for the ticked months and a Total / average row for several months) */
   const I = metricIdx;
-  const stackCols = METRIC_SHOW.map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0 && i !== I.agent && i !== I.sup);
+  const stackCols = metricShowCols(selYm.map(ym => +ym.slice(5, 7))).filter(i => i !== I.agent && i !== I.sup);
   const myM = metricRows.filter(r => normName(r[I.agent]) === normName(a.name)).sort((p, q) => rankM(p[I.month]) - rankM(q[I.month]));
   const mTicked = myM.filter(r => inSel(r, I.month));
   const stackCell = (r, i) => {
