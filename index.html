@@ -939,6 +939,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 .kpi-goal{color:var(--blue);font-weight:700;font-size:13px}
 .kpi-text{margin-top:2px;color:var(--muted);font-size:13.5px;line-height:1.55}
 .kpi-wt{background:var(--blue);color:#fff;font-weight:800;font-size:13px;line-height:1;padding:4px 11px;border-radius:999px;letter-spacing:.2px;box-shadow:0 1px 3px rgba(37,99,235,.35)}
+.hd-wt{color:var(--blue);font-weight:700;text-transform:none;letter-spacing:0}
 .kpi-outro{margin:8px 0 0;padding-top:9px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;font-style:italic}
 </style>
 </head>
@@ -3501,7 +3502,7 @@ function mcsBand(head, v, months) {
 }
 
 /* Columns shown in the Performance Stack Ranking table, in this order (matched by header name) */
-const METRIC_SHOW = ['agent name', 'attendance', 'call and ticket quality', 'fcr', 'misroute rate', 'work rate', 'compliance', 'total', 'supervisor'];
+const METRIC_SHOW = ['agent name', 'attendance', 'call and ticket quality', 'fcr', 'work rate', 'compliance', 'misroute rate', 'total', 'supervisor'];
 /* Columns that only exist for certain months: header name -> month number (11 = November). Shown only while that month is ticked. */
 const METRIC_MONTH_ONLY = { 'compliance': [11] };
 const metricMonthNums = labels => labels.map(l => SS_MON.findIndex(x => String(l).toLowerCase().includes(x)) + 1);
@@ -3519,7 +3520,7 @@ const metricWeightHtml = (i, monthNums) => {
   const sheetW = metricWeights[i] || '';
   if (/^\d+(\.\d+)?%$/.test(sheetW)) return `<small>${esc(sheetW)}</small>`;       // a weight typed in the sheet wins
   const W = metricWeightsFor(monthNums), w = W && W[String(metricHeads[i] || '').toLowerCase().trim()];
-  return w != null ? `<small>(${w})</small>` : '';
+  return w != null ? `<span class="hd-wt">(${w})</span>` : '';
 };
 
 /* "Your targets for the month": one card, filled into every .kpi-card on the page */
