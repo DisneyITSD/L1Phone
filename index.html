@@ -938,6 +938,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 .kpi-line b{color:var(--ink);font-size:14px}
 .kpi-goal{color:var(--blue);font-weight:700;font-size:13px}
 .kpi-text{margin-top:2px;color:var(--muted);font-size:13.5px;line-height:1.55}
+.kpi-wt{color:var(--muted);font-weight:600;font-size:12.5px}
 .kpi-outro{margin:8px 0 0;padding-top:9px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;font-style:italic}
 </style>
 </head>
@@ -996,21 +997,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 
 <div id="statusBanner" class="note red" hidden></div>
 <div id="highAnnouncements" class="note red" style="white-space:pre-wrap" hidden></div>
-<details class="kpi-card" id="kpiCard" hidden>
-  <summary class="kpi-head"><span>🎯 Your targets for the month</span><span class="kpi-chev" aria-hidden="true"></span></summary>
-  <div class="kpi-body">
-    <p class="kpi-intro">Here’s what we’re aiming for each month, and what each number means for you.</p>
-    <ul class="kpi-list">
-    <li><div class="kpi-line"><b>Attendance</b><span class="kpi-goal">Aim for 95% or higher</span></div><div class="kpi-text">The share of your scheduled days that you showed up. Being there on your scheduled days keeps the whole team’s day running smoothly.</div></li>
-    <li><div class="kpi-line"><b>Call and Ticket Quality</b><span class="kpi-goal">Aim for 95% or higher</span></div><div class="kpi-text">Your score from reviews of your calls and tickets. It shows how closely you’re following our quality standards.</div></li>
-    <li><div class="kpi-line"><b>FCR (First Contact Resolution)</b><span class="kpi-goal">Aim for 82% or higher</span></div><div class="kpi-text">How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.</div></li>
-    <li><div class="kpi-line"><b>Work Rate</b><span class="kpi-goal">Aim for 75% or higher</span></div><div class="kpi-text">How much of your logged-in time goes to actual work. About 25% of the day is already set aside for breaks and other activities.</div></li>
-    <li><div class="kpi-line"><b>Ticket Compliance</b><span class="kpi-goal">Aim for 100% or higher</span></div><div class="kpi-text">Create a ticket for every call you take. Your tickets should match or beat your calls, so everything is documented.</div></li>
-    <li><div class="kpi-line"><b>Misroute Rate</b><span class="kpi-goal">Aim for below 1.030%</span></div><div class="kpi-text">How often your tickets end up with the wrong team. The lower the better, so take a moment to triage each one right.</div></li>
-    </ul>
-    <p class="kpi-outro">Small habits, steady results. Keep it up! 💪</p>
-  </div>
-</details>
+<details class="kpi-card" id="kpiCard" hidden></details>
 <div id="dataUpdateNote" role="status" hidden></div>
 
 <!-- ============ ANNOUNCEMENTS (pictures from announcements.js) ============ -->
@@ -1099,6 +1086,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   </details>
     </div>
   </div>
+  <details class="kpi-card" id="kpiCardAgent" open style="margin-top:20px" hidden></details>
   <div id="agSumMonthPark" class="sum-h-row" style="margin:20px 0 0;justify-content:flex-start" hidden>
     <b>📅 Month</b>
     <div class="msel" id="agSumMonthWrap">
@@ -1319,6 +1307,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 <!-- ============ SCORECARD: OVERALL METRIC ============ -->
 <section class="tab-panel" id="metricTab" hidden>
   <div class="view-hint">📊 Performance stack ranking per agent.<br>Tick one or more months (or Year to date); click an agent (▸) to open their monthly scores.</div>
+  <details class="kpi-card" id="kpiCardMetric" open></details>
   <div class="controls">
     <div class="msel" id="metricMonthWrap">
       <button type="button" id="metricMonthBtn" class="msel-btn">Month ▾</button>
@@ -3410,7 +3399,7 @@ function buildSsStack(selYms, supBy) {
   const cols = metricShowCols(selYms.map(ym => +ym.slice(5, 7)));
   const isPct = v => /^\d+(\.\d+)?%$/.test(v || '');
   const arrow = i => sc === i ? (col >= 0 ? (asc ? ' ▲' : ' ▼') : ' ▼') : '';
-  table.tHead.innerHTML = '<tr>' + cols.map(i => `<th onclick="ssStackSortBy(${i})">${esc(metricHeads[i])}${arrow(i)}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`).join('') + '</tr>';
+  table.tHead.innerHTML = '<tr>' + cols.map(i => `<th onclick="ssStackSortBy(${i})">${esc(metricHeads[i])}${arrow(i)}${metricWeightHtml(i, selYms.map(ym => +ym.slice(5, 7)))}</th>`).join('') + '</tr>';
 
   wireSsGroups();
   const byAg = new Map();
@@ -3519,6 +3508,37 @@ const metricMonthNums = labels => labels.map(l => SS_MON.findIndex(x => String(l
 const metricShowCols = monthNums => METRIC_SHOW.filter(n => !METRIC_MONTH_ONLY[n] || METRIC_MONTH_ONLY[n].some(m => monthNums.includes(m)))
   .map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0);
 
+/* Scorecard weights (points out of 100). Shown under the column titles only when every ticked month is in METRIC_WEIGHT_MONTHS. */
+const METRIC_WEIGHTS = { 'attendance': 35, 'call and ticket quality': 25, 'work rate': 15, 'fcr': 15, 'compliance': 5, 'misroute rate': 5, 'total': 100 };
+const METRIC_WEIGHT_MONTHS = [11];
+const metricWeightHtml = (i, monthNums) => {
+  const sheetW = metricWeights[i] || '';
+  if (/^\d+(\.\d+)?%$/.test(sheetW)) return `<small>${esc(sheetW)}</small>`;       // a weight typed in the sheet wins
+  const w = METRIC_WEIGHTS[String(metricHeads[i] || '').toLowerCase().trim()];
+  return w != null && monthNums.length && monthNums.every(m => METRIC_WEIGHT_MONTHS.includes(m)) ? `<small>${w} pts</small>` : '';
+};
+
+/* "Your targets for the month": one card, filled into every .kpi-card on the page */
+const KPI_ITEMS = [
+  ['Attendance', 'Aim for 95% or higher', 'The share of your scheduled days that you showed up. Being there on your scheduled days keeps the whole team’s day running smoothly.'],
+  ['Call and Ticket Quality', 'Aim for 95% or higher', 'Your score from reviews of your calls and tickets. It shows how closely you’re following our quality standards.'],
+  ['FCR (First Contact Resolution)', 'Aim for 82% or higher', 'How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.'],
+  ['Work Rate', 'Aim for 75% or higher', 'How much of your logged-in time goes to actual work. About 25% of the day is already set aside for breaks and other activities.'],
+  ['Ticket Compliance', 'Aim for 100% or higher', 'Create a ticket for every call you take. Your tickets should match or beat your calls, so everything is documented.'],
+  ['Misroute Rate', 'Aim for below 1.030%', 'How often your tickets end up with the wrong team. The lower the better, so take a moment to triage each one right.']
+];
+function renderKpiCards() {
+  const wts = ['Attendance', 'Call and Ticket Quality', 'Work Rate', 'FCR', 'Compliance', 'Misroute Rate']
+    .map(n => `${n} ${METRIC_WEIGHTS[n.toLowerCase()]}`).join(' · ');
+  const html = '<summary class="kpi-head"><span>🎯 Your targets for the month</span><span class="kpi-chev" aria-hidden="true"></span></summary>' +
+    '<div class="kpi-body"><p class="kpi-intro">Here’s what we’re aiming for each month, and what each number means for you.</p><ul class="kpi-list">' +
+    KPI_ITEMS.map(([n, g, t]) => `<li><div class="kpi-line"><b>${n}</b><span class="kpi-goal">${g}</span></div><div class="kpi-text">${t}</div></li>`).join('') +
+    `<li><div class="kpi-line"><b>Stack ranking weights</b><span class="kpi-goal">Total ${METRIC_WEIGHTS.total} points</span></div><div class="kpi-text">Your stack ranking score is built from these points: ${wts}. This is the split from November, when Compliance was added.</div></li>` +
+    '</ul><p class="kpi-outro">Small habits, steady results. Keep it up! 💪</p></div>';
+  document.querySelectorAll('details.kpi-card').forEach(d => { d.innerHTML = html; });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderKpiCards); else renderKpiCards();
+
 function buildMetric() {
   const table = $('metricTable');
   if (!metricHeads.length) {
@@ -3598,7 +3618,7 @@ function buildMetric() {
   const cols = metricShowCols(metricMonthNums([...metricSel]));
   const isPct = v => /^\d+(\.\d+)?%$/.test(v || '');
   table.tHead.innerHTML = '<tr>' + cols.map(i =>
-    `<th onclick="sortBy('metric',${i})">${esc(metricHeads[i])}${isPct(metricWeights[i]) ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`
+    `<th onclick="sortBy('metric',${i})">${esc(metricHeads[i])}${metricWeightHtml(i, metricMonthNums([...metricSel]))}</th>`
   ).join('') + '</tr>';
 
   /* One table cell. agentHtml replaces the agent cell's content (rank + name, or a month label). */
@@ -4443,7 +4463,7 @@ function buildAgentSummary() {
   box.querySelectorAll('details.ag-sec').forEach(d => d.open ? agSecOpen.add(d.dataset.k) : agSecOpen.delete(d.dataset.k));   // the page is rebuilt on every refresh: keep the sections the viewer opened
   wireAgSum();
   const schedBox = $('agSumSchedBody');
-  if (!estData.length) { box.innerHTML = '<div class="empty" style="--c:#6c757d">Loading data...</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; return; }
+  if (!estData.length) { box.innerHTML = '<div class="empty" style="--c:#6c757d">Loading data...</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; $('kpiCardAgent').hidden = true; return; }
   const D = summaryData();
   agSumMonths = D.yms;
   /* Agent list (shares the choice of "My attendance") */
@@ -4463,7 +4483,7 @@ function buildAgentSummary() {
   if (!agSumSel.size) agSumSel.add(D.yms[D.yms.length - 1]);
   renderAgSumMonthPicker();
   const a = D.agents.find(x => x.name === sel.value);
-  if (!a) { box.innerHTML = AUTH && AUTH.restricted ? '<div class="my-lbl">We couldn’t find scores for your name yet. Please ask your supervisor to check that your name in the Users tab matches the scorecard.</div>' : '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; return; }
+  if (!a) { box.innerHTML = AUTH && AUTH.restricted ? '<div class="my-lbl">We couldn’t find scores for your name yet. Please ask your supervisor to check that your name in the Users tab matches the scorecard.</div>' : '<div class="my-lbl">Pick an agent to see their summary.</div>'; schedBox.hidden = true; $('agSumMonthPark').hidden = true; $('kpiCardAgent').hidden = true; return; }
   try { localStorage.setItem(MY_AGENT_KEY, a.name); } catch (e) {}
 
   const selYm = D.yms.filter(m => agSumSel.has(m)), multi = selYm.length > 1;
@@ -4532,7 +4552,7 @@ function buildAgentSummary() {
     return /no data/i.test(v || '') ? '<td class="nodata">No Data</td>' : `<td class="${i === I.total ? 'overall' : ''}${sc}"${bd ? ` title="${esc(bd.tip)}"` : ''}>${esc(v) || '—'}</td>`;
   };
   const stackRow = (label, r, attr) => `<tr${attr || ''}><td>${label}</td>${stackCols.map(i => stackCell(r, i)).join('')}</tr>`;
-  const stack = mTicked.length && stackCols.length ? `<table id="agSumStack" class="nosort"><thead><tr><th>Month</th>${stackCols.map(i => `<th>${esc(metricHeads[i])}${/^\d+(\.\d+)?%$/.test(metricWeights[i] || '') ? `<small>${esc(metricWeights[i])}</small>` : ''}</th>`).join('')}</tr></thead><tbody>${
+  const stack = mTicked.length && stackCols.length ? `<table id="agSumStack" class="nosort"><thead><tr><th>Month</th>${stackCols.map(i => `<th>${esc(metricHeads[i])}${metricWeightHtml(i, selYm.map(ym => +ym.slice(5, 7)))}</th>`).join('')}</tr></thead><tbody>${
     mTicked.map(r => stackRow(esc(r[I.month] || '—'), r)).join('') +
     (multi && mTicked.length > 1 ? stackRow('Total / average', metricAggregate(mTicked)[0]).replace('<tr>', '<tr class="agsum-total">') : '')
   }</tbody></table>`
@@ -4562,7 +4582,7 @@ function buildAgentSummary() {
   /* Schedule calendar for the same agent. The month follows the latest ticked month whenever the agent or months change;
      stepping months inside the calendar is kept when the page just refreshes. */
   schedBox.hidden = false;
-  $('agSumMonthPark').hidden = false;
+  $('agSumMonthPark').hidden = false; $('kpiCardAgent').hidden = false;
   const calKey = a.name + '|' + selYm.join(',');
   if (calKey !== agSumCalKey) { agSumCalKey = calKey; $('rosterMonth').value = selYm[selYm.length - 1]; }
   buildRosterView(a.name);
