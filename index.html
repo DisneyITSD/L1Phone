@@ -3493,6 +3493,7 @@ const METRIC_BANDS = {
   'fcr':                     { good: 10, mid: 6,  tip: 'Green: 10 pts (FCR >=82%) | Amber: 6-8 pts (60-81%) | Red: <=4 pts' },
   'work rate':               { good: 25, mid: 15, tip: 'Green: 25 pts (work rate >=75%) | Amber: 15-20 pts (70-74%) | Red: <=10 pts' },
   'misroute rate':           { good: 5,  mid: 2,  tip: 'Green: 5 pts (misroute <1.030%) | Amber: 2-3 pts (1.031-1.99%) | Red: 0 pts' },
+  'compliance':              { good: 10, mid: 6,  tip: 'Green: 10 pts (compliance >=97%) | Amber: 6-8 pts (80-96%) | Red: <=4 pts (<80%)' },
   'total':                   { good: 85, mid: 60, tip: 'Green: >=85 pts | Amber: 60-84 pts | Red: <60 pts' }
 };
 const metricBand = i => METRIC_BANDS[String(metricHeads[i] || '').toLowerCase().trim()] || null;
