@@ -3495,7 +3495,7 @@ function mcsBand(head, v, months) {
   if (typeof n !== 'number') return '';
   if (k === 'qa') return n >= 95 ? 'good' : n >= 85 ? 'mid' : 'low';
   if (k === 'workingrate') return n >= 75 ? 'good' : n >= 70 ? 'mid' : 'low';
-  if (k === 'compliance') return n >= 100 ? 'good' : 'low';
+  if (k === 'compliance') return n >= 97 ? 'good' : n >= 80 ? 'mid' : 'low';      // 5 pts >=97% | 4-3 pts 80-96% | 2-1 pts below 80%
   if (k === 'misroutes') return months > 1 ? '' : n < 1.03 ? 'good' : n < 2 ? 'mid' : 'low';   // several months are added up, so the per-month target no longer applies
   if (k.startsWith('fcrcount')) return n >= 82 ? 'good' : n >= 60 ? 'mid' : 'low';
   return '';
@@ -3529,7 +3529,7 @@ const KPI_ITEMS = [
   ['Call and Ticket Quality', 'call and ticket quality', 'Aim for 95% or higher', 'Your score from reviews of your calls and tickets. It shows how closely you’re following our quality standards.'],
   ['FCR (First Contact Resolution)', 'fcr', 'Aim for 82% or higher', 'How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.'],
   ['Work Rate', 'work rate', 'Aim for 75% or higher', 'How much of your logged-in time goes to actual work. About 25% of the day is already set aside for breaks and other activities.'],
-  ['Ticket Compliance', 'compliance', 'Aim for 100% or higher', 'Create a ticket for every call you take. Your tickets should match or beat your calls, so everything is documented.'],
+  ['Ticket Compliance', 'compliance', 'Aim for 97% or higher', 'Create a ticket for every call you take, so everything is documented. Aim to cover at least 97% of your calls.'],
   ['Misroute Rate', 'misroute rate', 'Aim for below 1.030%', 'How often your tickets end up with the wrong team. The lower the better, so take a moment to triage each one right.']
 ];
 /* Months ticked on the page this card sits on (the weights follow them) */
