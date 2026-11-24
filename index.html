@@ -1607,7 +1607,7 @@ const USERS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tq
 /* Optional: more users typed here instead of in the sheet, e.g. { u: 'AG-7K2Q', n: 'Dela Cruz, Juan', role: 'agent' } */
 const LOCAL_USERS = [];
 const AUTH_KEY = 'ditsc_username';
-const AGENT_TABS = ['announcementsTab', 'agentSumTab', 'metricTab'];     // the only pages an agent can open (Performance Stack Ranking lists every agent)
+const AGENT_TABS = ['announcementsTab', 'agentSumTab', 'qaTab', 'metricTab'];     // the only pages an agent can open (Performance Stack Ranking lists every agent)
 let AUTH = null, USERS = [], usersError = '';
 const tabAllowed = id => !AUTH || !AUTH.restricted || AGENT_TABS.includes(id);
 
@@ -1646,6 +1646,10 @@ function applyAccess() {
   document.querySelectorAll('.tabs .tab-btn').forEach(b => b.style.display = r && !AGENT_TABS.includes(b.dataset.tab) ? 'none' : '');
   document.querySelectorAll('.tabs .nav-group').forEach(g => g.style.display = [...g.querySelectorAll('.tab-btn')].some(b => b.style.display !== 'none') ? '' : 'none');
   $('agSumAgent').style.display = r ? 'none' : '';
+  $('qaSupervisor').style.display = r ? 'none' : '';       // agents see only their own QA scores: no supervisor filter, podium or agent count
+  $('qaPodium').style.display = r ? 'none' : '';
+  $('qaAgents').parentElement.style.display = r ? 'none' : '';
+  const qaHint = document.querySelector('#qaTab > .view-hint'); if (qaHint && r) qaHint.innerHTML = '✅ Your Quality Assurance scores.<br>Tick one or more months (or Year to date); click your name (▸) to open your audits.';
   const hint = document.querySelector('#agentSumTab > .view-hint'); if (hint) hint.style.display = r ? 'none' : '';
   if (r) { showTab('agentSumTab'); history.replaceState(null, '', '#agentSumTab'); }
   else TAB_RENDERERS[activeTab]?.();
@@ -2727,7 +2731,7 @@ function buildQA() {
     const date = normalizeDate(x.CallDate);
     return { analyst: String(x['Analyst Name'] ?? '').trim(), supervisor: String(x.Supervisor ?? '').trim(), date, ym: date.slice(0, 7),
              ticket: String(x.TicketNumber ?? '').trim(), score: qaPct(x.Score), id: qid };
-  }).filter(x => x.ym);
+  }).filter(x => x.ym && (!AUTH || !AUTH.restricted || normName(x.analyst) === normName(AUTH.name)));   // agents see only their own audits
 
   qaMonths = [...new Set(all.map(x => x.ym))].sort();
   if (!qaSelInit && qaMonths.length) { qaSel = new Set([qaMonths[qaMonths.length - 1]]); qaSelInit = true; }
