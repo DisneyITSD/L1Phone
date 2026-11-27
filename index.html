@@ -2269,7 +2269,11 @@ function pictureAnnouncements(all) {
   return list.filter(a => a && a.image).map(a => {
     const start = normalizeDate(a.start), end = normalizeDate(a.end);
     return { ...a, startD: start, endD: end, expired: !!(end && end < today), active: (!start || start <= today) && (!end || end >= today) };
-  }).filter(a => all || a.active);
+  }).filter(a => all || a.active)
+    /* newest posted first ("posted" / "date" / "start"); announcements with no date follow, in the order listed in announcements.js */
+    .map((a, i) => ({ a, i, d: normalizeDate(a.posted || a.date || a.start) }))
+    .sort((x, y) => (!x.d - !y.d) || (x.d && y.d && (x.d < y.d ? 1 : x.d > y.d ? -1 : 0)) || x.i - y.i)
+    .map(x => x.a);
 }
 function openPictureBox(src) {
   const box = document.createElement('div');
