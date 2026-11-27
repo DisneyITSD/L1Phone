@@ -978,6 +978,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
       <div class="nav-label"><span>Performance</span></div>
       <div class="nav-items"><div>
         <a class="tab-btn" href="#qaTab" data-tab="qaTab"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>Quality Assurance</span></a>
+        <a class="tab-btn" href="#misroutesTab" data-tab="misroutesTab" data-title="Misroutes"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg><span>Misroutes</span></a>
         <a class="tab-btn" href="#mcsTab" data-tab="mcsTab" data-title="Overall Metric Scorecard"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Metric scorecard</span></a>
         <a class="tab-btn" href="#metricTab" data-tab="metricTab" data-title="Performance Stack Ranking"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 8h10M7 13h6M7 18h3"/></svg><span>Stack ranking</span></a>
       </div></div>
@@ -1305,6 +1306,31 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   </details>
 </section>
 
+<section class="tab-panel" id="misroutesTab" hidden>
+  <div class="view-hint">🔀 Incidents that were routed to the wrong group.</div>
+  <div class="controls">
+    <select id="misMonth" onchange="buildMisroutes()"><option value="all">All months</option></select>
+    <select id="misSupervisor" onchange="buildMisroutes()"><option>All Supervisors</option></select>
+    <select id="misFilter" onchange="buildMisroutes()"><option value="yes">Misrouted only</option><option value="all">All incidents</option></select>
+    <input type="text" id="misSearch" placeholder="🔍 Search agent or incident..." onkeyup="buildMisroutes()">
+    <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
+  </div>
+  <div class="daily-summary">
+    <div class="summary-box">📋 Records: <span id="misCount">0</span></div>
+    <div class="summary-box">👤 Agents: <span id="misAgents">0</span></div>
+  </div>
+  <div class="panel">
+    <div class="schedule-container">
+      <table id="misTable" class="nosort">
+        <thead><tr>
+          <th>👤 OpenedBy</th><th>🎫 Incident</th><th>📂 OpenGroup</th><th>➡️ FirstAssign</th><th>➡️ SecondAssign</th><th>🏁 CloseGroup</th><th>🕒 ClosedTime</th><th>🧑‍💼 Supervisor</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <!-- ============ SCORECARD: OVERALL METRIC ============ -->
 <section class="tab-panel" id="metricTab" hidden>
   <div class="view-hint">📊 Performance stack ranking per agent.<br>Tick one or more months (or Year to date); click an agent (▸) to open their monthly scores.</div>
@@ -1385,6 +1411,10 @@ const SHORT_NEEDS_APPROVAL = true;
    Paste the number after "gid=" from the LBPRR tab's address bar here (most reliable). Empty = find the tab by its name. */
 const LBPRR_GID = '1191914646';
 const LBPRR_URL = LBPRR_GID ? sheetUrl(LBPRR_GID) : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('LBPRR')}`;
+/* Misroutes tab: Incident | ClosedTime | BA Code | OpenGroup | CloseGroup | FirstAssign | SecondAssign | Misrouted? | OpenedBy.
+   Paste the number after "gid=" from the Misroutes tab's address bar here (most reliable). Empty = find the tab by its name. */
+const MISROUTES_GID = '18012161';
+const MISROUTES_URL = MISROUTES_GID ? sheetUrl(MISROUTES_GID) : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Misroutes')}`;
 const URLS = {
   pto: sheetUrl(1297010746),
   calledOff: sheetUrl(2139820898),
@@ -1607,7 +1637,7 @@ const USERS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tq
 /* Optional: more users typed here instead of in the sheet, e.g. { u: 'AG-7K2Q', n: 'Dela Cruz, Juan', role: 'agent' } */
 const LOCAL_USERS = [];
 const AUTH_KEY = 'ditsc_username';
-const AGENT_TABS = ['announcementsTab', 'agentSumTab', 'qaTab', 'metricTab'];     // the only pages an agent can open (Performance Stack Ranking lists every agent)
+const AGENT_TABS = ['announcementsTab', 'agentSumTab', 'qaTab', 'misroutesTab', 'metricTab'];     // the only pages an agent can open (Performance Stack Ranking lists every agent)
 let AUTH = null, USERS = [], usersError = '';
 const tabAllowed = id => !AUTH || !AUTH.restricted || AGENT_TABS.includes(id);
 
@@ -1649,6 +1679,10 @@ function applyAccess() {
   $('qaSupervisor').style.display = r ? 'none' : '';       // agents see only their own QA scores: no supervisor filter, podium or agent count
   $('qaPodium').style.display = r ? 'none' : '';
   $('qaAgents').parentElement.style.display = r ? 'none' : '';
+  $('misSupervisor').style.display = r ? 'none' : '';     // agents see only their own misroutes: no supervisor filter, agent count or search
+  $('misSearch').style.display = r ? 'none' : '';
+  $('misAgents').parentElement.style.display = r ? 'none' : '';
+  const misHint = document.querySelector('#misroutesTab > .view-hint'); if (misHint && r) misHint.innerHTML = '🔀 Your incidents that were routed to the wrong group.';
   const qaHint = document.querySelector('#qaTab > .view-hint'); if (qaHint && r) qaHint.innerHTML = '✅ Your Quality Assurance scores.<br>Tick one or more months (or Year to date); click your name (▸) to open your audits.';
   const hint = document.querySelector('#agentSumTab > .view-hint'); if (hint) hint.style.display = r ? 'none' : '';
   if (r) { showTab('agentSumTab'); history.replaceState(null, '', '#agentSumTab'); }
@@ -1882,6 +1916,68 @@ const loadMetric = () => guard('metric', "Couldn't load the Performance Stack Ra
   }
 });
 
+/* =====================================================================
+   MISROUTES (Misroutes tab)
+   Sheet columns: Incident | ClosedTime | BA Code | OpenGroup | CloseGroup | FirstAssign | SecondAssign | Misrouted? | OpenedBy
+   Shown as: OpenedBy | Incident | OpenGroup | FirstAssign | SecondAssign | CloseGroup | ClosedTime | Supervisor
+   The Supervisor is looked up from the roster by the OpenedBy name.
+   ===================================================================== */
+let misrouteRows = [], misHasFlag = false;
+const misKey = s => clean(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const misDate = v => { const t = String(v ?? '').trim(), m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/); return m ? m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0') : normalizeDate(t); };
+const misYes = v => /^(y|yes|true|1|x|misrouted)\b/i.test(clean(v));
+const loadMisroutes = () => guard('misroutes', "Couldn't load the Misroutes tab", async () => {
+  const rows = await fetchCSV(MISROUTES_URL, { raw: true });
+  const h = rows.findIndex(r => r.some(c => misKey(c) === 'incident') && r.some(c => misKey(c) === 'openedby'));
+  if (h < 0) throw new Error('no "Incident" / "OpenedBy" header found - check the tab is named Misroutes and that the sheet is shared');
+  const heads = rows[h].map(misKey), ix = k => heads.indexOf(k), g = (r, k) => ix(k) >= 0 ? clean(r[ix(k)]) : '';
+  misHasFlag = ix('misrouted') >= 0;
+  misrouteRows = rows.slice(h + 1).map(r => ({
+    openedBy: g(r, 'openedby'), incident: g(r, 'incident'), openGroup: g(r, 'opengroup'), first: g(r, 'firstassign'), second: g(r, 'secondassign'),
+    closeGroup: g(r, 'closegroup'), closed: g(r, 'closedtime'), date: misDate(g(r, 'closedtime')), mis: misYes(g(r, 'misrouted'))
+  })).filter(x => x.incident || x.openedBy);
+});
+function misRowsHtml(rows) {
+  return rows.length ? rows.map(x => `
+    <tr class="${supClass(x.supervisor)}" style="${supStyle(x.supervisor)}">
+      <td>${esc(x.openedBy) || '—'}</td>
+      <td>${esc(x.incident) || '—'}</td>
+      <td>${esc(x.openGroup) || '—'}</td>
+      <td>${esc(x.first) || '—'}</td>
+      <td>${esc(x.second) || '—'}</td>
+      <td>${esc(x.closeGroup) || '—'}</td>
+      <td>${esc(x.closed) || '—'}</td>
+      <td>${esc(x.supervisor) || '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="8">${esc(loadErrors.misroutes || 'No misroutes found')}</td></tr>`;
+}
+function misSupMap() {
+  const m = new Map();
+  [...(typeof RAW !== 'undefined' && RAW.ph || phData), ...(typeof RAW !== 'undefined' && RAW.est || estData)].forEach(r => { if (r.Name && r.Supervisor) m.set(normName(r.Name), r.Supervisor); });
+  return m;
+}
+function misFillSup() {
+  const sel = $('misSupervisor'), prev = sel.value;
+  sel.innerHTML = `<option>${ALL}</option>` + uniqueSupervisors().map(s => `<option>${esc(s)}</option>`).join('');
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+  return sel.value;
+}
+function buildMisroutes() {
+  const restricted = !!(AUTH && AUTH.restricted), sup = restricted ? ALL : misFillSup();
+  const q = up($('misSearch').value), only = $('misFilter').value === 'yes';
+  const bySup = misSupMap();
+  let rows = misrouteRows.map(x => ({ ...x, supervisor: bySup.get(normName(x.openedBy)) || '' }))
+    .filter(x => (!only || !misHasFlag || x.mis) && (!restricted || normName(x.openedBy) === normName(AUTH.name)));   // agents see only their own misroutes
+  const mSel = $('misMonth'), prevM = mSel.value || 'all';
+  const months = [...new Set(rows.map(x => x.date.slice(0, 7)).filter(Boolean))].sort().reverse();
+  mSel.innerHTML = '<option value="all">All months</option>' + months.map(m => `<option value="${m}">${new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>`).join('');
+  mSel.value = months.includes(prevM) ? prevM : 'all';
+  rows = rows.filter(x => (mSel.value === 'all' || x.date.slice(0, 7) === mSel.value) && (sup === ALL || x.supervisor === sup) && (!q || up(x.openedBy).includes(q) || up(x.incident).includes(q)))
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.openedBy.localeCompare(b.openedBy));
+  $('misTable').tBodies[0].innerHTML = misRowsHtml(rows);
+  $('misCount').textContent = rows.length;
+  $('misAgents').textContent = new Set(rows.map(x => normName(x.openedBy))).size;
+}
+
 const addDays = (dateStr, n) => { const d = parseYMD(dateStr); d.setDate(d.getDate() + n); return ymd(d); };
 const dailyFor = (r, date) => dailyMap.get(normName(r.Name) + '|' + date);
 
@@ -1905,7 +2001,7 @@ async function refreshAttendanceData(notify = false, scores = true) {
   if (btn) { btn.disabled = true; btn.classList.add('spinning'); }
   try {
     await Promise.all([loadAttendance(), loadSchedules(), loadDaily(),
-      ...(scores ? [loadQA(), loadQAScoring(), loadMetric(), loadMcs()] : []),
+      ...(scores ? [loadQA(), loadQAScoring(), loadMetric(), loadMcs(), loadMisroutes()] : []),
       ...(notify && typeof loadDataUpdates === 'function' ? [loadDataUpdates()] : [])]);   // also re-read the "Data as of" dates
   } finally { if (btn) { btn.disabled = false; btn.classList.remove('spinning'); } }
   renderAll();
@@ -1923,6 +2019,7 @@ const TAB_RENDERERS = {
   calledOffTab: () => buildRecordTable('att'),
   lateTab: buildLateTable,
   qaTab: buildQA,
+  misroutesTab: buildMisroutes,
   metricTab: buildMetric,
   mcsTab: buildMcs,
   supervisorTab: buildSupervisorSummary,
@@ -4640,7 +4737,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     .forEach(id => $(id).value = today);
   showTab('summaryTab');           // landing page
 
-  await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadQAScoring(), loadMetric(), loadMcs()]);
+  await Promise.all([loadSchedules(), loadAttendance(), loadDaily(), loadQA(), loadQAScoring(), loadMetric(), loadMcs(), loadMisroutes()]);
   renderAll();
   showTabFromHash();
 
