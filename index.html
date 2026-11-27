@@ -4735,9 +4735,9 @@ function buildAgentSummary() {
   const totals = D.agents.map(x => sumRoll(x, selYm).total).filter(v => v != null).sort((p, q) => q - p);
   const rank = me.total != null ? totals.findIndex(v => v <= me.total) + 1 : null;
   const cards =
+    cardC('🏆 Stack rank', rank ? '#' + rank : '—', bc(bandOf('total', me.total)), me.total != null ? `${me.total.toFixed(1)} pts · of ${totals.length} agents` : 'No stack ranking data', 'Performance Stack Ranking position by total points, averaged over the months (green 85+, amber 60-84)') +
     cardC('📅 Attendance', pc(me.pct), bc(bandOf('att', me.pct)), `${me.w.toFixed(1)} / ${me.e.toFixed(1)} hrs`, 'Hours worked ÷ hours expected (green 95%+, amber 91-94.9%, red below 91%)') +
     cardC('✅ QA audits', pc(me.qa), bc(bandOf('qa', me.qa)), `${me.qn} audit${me.qn === 1 ? '' : 's'}`, 'Average QA score of all the audits in the period (green 95%+, amber 85-94.9%)') +
-    cardC('🏆 Stack rank', rank ? '#' + rank : '—', bc(bandOf('total', me.total)), me.total != null ? `${me.total.toFixed(1)} pts · of ${totals.length} agents` : 'No stack ranking data', 'Performance Stack Ranking position by total points, averaged over the months (green 85+, amber 60-84)') +
     scCard('Working Rate', '💼 Working rate') +
     scCard('Compliance', '📋 Compliance') +
     scCard('Misroutes', '🔀 Misroutes') +
