@@ -2362,7 +2362,7 @@ function renderAgentNewAnnouncement() {
     <span class="ann-new-title">${esc(a.title)}</span>
     ${a.stamp ? `<span class="ann-new-date">${esc(a.stamp)}</span>` : ''}
     <span class="ann-new-go">View →</span></div>`;
-  const go = () => goToAnnouncement(a.key);
+  const go = () => a.image ? openPictureBox(a.image) : goToAnnouncement(a.key);   /* pop up the picture (click or Esc to close) */
   const bar = el.firstElementChild;
   bar.addEventListener('click', go);
   bar.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
