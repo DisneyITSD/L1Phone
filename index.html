@@ -1412,7 +1412,6 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
   <div class="controls">
     <select id="misMonth" onchange="buildMisroutes()"><option value="all">All months</option></select>
     <select id="misSupervisor" onchange="buildMisroutes()"><option>All Supervisors</option></select>
-    <select id="misFilter" onchange="buildMisroutes()"><option value="yes">Misrouted only</option><option value="all">All incidents</option></select>
     <input type="text" id="misSearch" placeholder="🔍 Search agent or incident..." onkeyup="buildMisroutes()">
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
   </div>
@@ -2065,10 +2064,10 @@ function misFillSup() {
 }
 function buildMisroutes() {
   const restricted = !!(AUTH && AUTH.restricted), sup = restricted ? ALL : misFillSup();
-  const q = up($('misSearch').value), only = $('misFilter').value === 'yes';
+  const q = up($('misSearch').value);
   const bySup = misSupMap();
   let rows = misrouteRows.map(x => ({ ...x, supervisor: bySup.get(misNorm(x.agent)) || '' }))
-    .filter(x => (!only || !misHasFlag || x.mis) && (!restricted || misNorm(x.agent) === misNorm(AUTH.name)));   // agents see only their own misroutes
+    .filter(x => (!restricted || misNorm(x.agent) === misNorm(AUTH.name)));   // agents see only their own misroutes
   const mSel = $('misMonth'), prevM = mSel.value || 'all';
   const months = [...new Set(rows.map(x => x.date.slice(0, 7)).filter(Boolean))].sort().reverse();
   mSel.innerHTML = '<option value="all">All months</option>' + months.map(m => `<option value="${m}">${new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>`).join('');
