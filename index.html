@@ -3687,7 +3687,6 @@ const METRIC_BANDS = {
   'fcr':                     { good: 10, mid: 6,  tip: 'Green: 10 pts (FCR >=82%) | Amber: 6-8 pts (60-81%) | Red: <=4 pts' },
   'work rate':               { good: 25, mid: 15, tip: 'Green: 25 pts (work rate >=75%) | Amber: 15-20 pts (70-74%) | Red: <=10 pts' },
   'misroute rate':           { good: 5,  mid: 2,  tip: 'Green: 5 pts (misroute <1.030%) | Amber: 2-3 pts (1.031-1.99%) | Red: 0 pts' },
-  'compliance':              { good: 5,  mid: 3,  tip: 'Green: 5 pts (compliance >=97%) | Amber: 3-4 pts (80-96%) | Red: <=2 pts (<80%)' },
   'total':                   { good: 85, mid: 60, tip: 'Green: >=85 pts | Amber: 60-84 pts | Red: <60 pts' }
 };
 const metricBand = i => METRIC_BANDS[String(metricHeads[i] || '').toLowerCase().trim()] || null;
@@ -3706,18 +3705,16 @@ function mcsBand(head, v, months) {
 }
 
 /* Columns shown in the Performance Stack Ranking table, in this order (matched by header name) */
-const METRIC_SHOW = ['agent name', 'attendance', 'call and ticket quality', 'fcr', 'work rate', 'compliance', 'misroute rate', 'total', 'supervisor'];
+const METRIC_SHOW = ['agent name', 'attendance', 'call and ticket quality', 'fcr', 'work rate', 'misroute rate', 'total', 'supervisor'];
 /* Columns that only exist for certain months: header name -> month number (11 = November). Shown only while that month is ticked. */
-const METRIC_MONTH_ONLY = { 'compliance': [11] };
+const METRIC_MONTH_ONLY = {};
 const metricMonthNums = labels => labels.map(l => SS_MON.findIndex(x => String(l).toLowerCase().includes(x)) + 1);
 const metricShowCols = monthNums => METRIC_SHOW.filter(n => !METRIC_MONTH_ONLY[n] || METRIC_MONTH_ONLY[n].some(m => monthNums.includes(m)))
   .map(n => metricHeads.findIndex(h => h.toLowerCase().trim() === n)).filter(i => i >= 0);
 
-/* Scorecard weights (points out of 100) by month: November onward (Compliance added) and October backwards.
-   A set is used only when every ticked month belongs to it; a mix of the two shows no weights. */
+/* Scorecard weights (points out of 100): Attendance 35, Quality 25, Work Rate 25, FCR 10, Misroute 5 - the same for every month. */
 const METRIC_WEIGHT_SETS = [
-  { months: [11], w: { 'attendance': 35, 'call and ticket quality': 25, 'work rate': 15, 'fcr': 15, 'compliance': 5, 'misroute rate': 5, 'total': 100 } },
-  { months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], w: { 'attendance': 35, 'call and ticket quality': 25, 'work rate': 25, 'fcr': 10, 'misroute rate': 5, 'total': 100 } }
+  { months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], w: { 'attendance': 35, 'call and ticket quality': 25, 'work rate': 25, 'fcr': 10, 'misroute rate': 5, 'total': 100 } }
 ];
 const metricWeightsFor = monthNums => monthNums.length ? (METRIC_WEIGHT_SETS.find(st => monthNums.every(m => st.months.includes(m))) || {}).w || null : null;
 const metricWeightHtml = (i, monthNums) => {
@@ -3731,9 +3728,8 @@ const metricWeightHtml = (i, monthNums) => {
 const KPI_ITEMS = [
   ['Attendance', 'attendance', 'Aim for 95% or higher', 'The share of your scheduled days that you showed up. Being there on your scheduled days keeps the whole team’s day running smoothly.'],
   ['Call and Ticket Quality', 'call and ticket quality', 'Aim for 95% or higher', 'Your score from reviews of your calls and tickets. It shows how closely you’re following our quality standards.'],
-  ['FCR (First Contact Resolution)', 'fcr', 'Aim for 82% or higher', 'How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.'],
   ['Work Rate', 'work rate', 'Aim for 75% or higher', 'How much of your logged-in time goes to actual work. About 25% of the day is already set aside for breaks and other activities.'],
-  ['Ticket Compliance', 'compliance', 'Aim for 97% or higher', 'Create a ticket for every call you take, so everything is documented. Aim to cover at least 97% of your calls.'],
+  ['FCR (First Contact Resolution)', 'fcr', 'Aim for 82% or higher', 'How often you fully solve the cast member’s issue on the first contact, with no follow-ups needed.'],
   ['Misroute Rate', 'misroute rate', 'Aim for below 1.030%', 'How often your tickets end up with the wrong team. The lower the better, so take a moment to triage each one right.']
 ];
 /* Months ticked on the page this card sits on (the weights follow them) */
