@@ -563,6 +563,8 @@ body{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;background:var(
 .pa-msg{margin-top:4px;font-size:13px;color:var(--ink);white-space:pre-wrap}
 .pa-date{margin-top:8px;font-size:12px;color:var(--muted)}
 .pa-expired{opacity:.6}
+.pa-flash{animation:paFlash 1s ease-in-out 3;border-color:var(--red)}
+@keyframes paFlash{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--red) 45%,transparent)}}
 .pa-missing{padding:28px 14px;text-align:center;font-size:12px;color:var(--muted);background:var(--paper)}
 .pa-empty{padding:18px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center}
 .pa-strip{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;cursor:pointer}
@@ -2281,7 +2283,7 @@ function openPictureBox(src) {
 }
 /* The picture cards (shared by the Announcements page and the Agent Summary page) */
 function picGridHtml(rows) {
-  return '<div class="pa-grid">' + rows.map(a => `<div class="pa-card${a.expired ? ' pa-expired' : ''}">
+  return '<div class="pa-grid">' + rows.map(a => `<div class="pa-card${a.expired ? ' pa-expired' : ''}" data-key="${esc(a.image)}">
       <img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy" data-src="${esc(a.image)}"
            onerror="this.outerHTML='<div class=&quot;pa-missing&quot;>Picture not found:<br>${esc(a.image)}</div>'">
       <div class="pa-body">
@@ -2316,27 +2318,30 @@ function renderLatestAnnouncement() {
 
 /* ---------- New-announcement alert (top of Agent Summary + NEW pill on the menu) ----------
    Shows the single most recent announcement while it is within ANN_FLASH_DAYS days of being posted.
-   Looks at both the picture announcements (posted date = "posted" / "date" / "start" in announcements.js)
-   and the sheet announcements (posted date = Timestamp). Only active announcements are considered. */
+   Uses the picture announcements in announcements.js (posted date = "posted" / "date" / "start"); only active ones count. */
 const ANN_FLASH_DAYS = 3;
 function latestRecentAnnouncement() {
-  const todayStr = ymd(estNow()), today = parseYMD(todayStr);
-  const live = (s, e) => (!s || s <= todayStr) && (!e || e >= todayStr);
+  const today = parseYMD(ymd(estNow()));
   const cands = [];
   pictureAnnouncements(false).forEach(a => {
     const d = normalizeDate(a.posted || a.date || a.start);
-    if (d) cands.push({ posted: parseYMD(d), title: a.title, message: a.message, image: a.image });
+    if (d) cands.push({ posted: parseYMD(d), key: a.image, title: a.title, message: a.message, image: a.image, stamp: fmtDate(parseYMD(d)) });
   });
-  announcementList.forEach(a => {
-    if (!(a['Announcement Title'] || '').trim()) return;
-    if (!live(normalizeDate(a['Start Date']), normalizeDate(a['End Date']))) return;
-    const t = new Date(a.Timestamp), d = isNaN(t) ? normalizeDate(a['Start Date']) : ymd(t);
-    if (d) cands.push({ posted: isNaN(t) ? parseYMD(d) : t, day: parseYMD(d), title: a['Announcement Title'], message: a['Announcement Message'], stamp: isNaN(t) ? '' : fmtStamp(a.Timestamp) });
-  });
-  const recent = cands.map(c => ({ ...c, age: Math.round((today - (c.day || new Date(c.posted.getFullYear(), c.posted.getMonth(), c.posted.getDate()))) / 86400000) }))
+  /* list order is newest first, so on the same posted day the earlier entry wins (the sort is stable) */
+  return cands.map(c => ({ ...c, age: Math.round((today - c.posted) / 86400000) }))
     .filter(c => c.age >= 0 && c.age <= ANN_FLASH_DAYS)
-    .sort((a, b) => b.posted - a.posted);
-  return recent[0] || null;
+    .sort((x, y) => y.posted - x.posted)[0] || null;
+}
+/* Open the Announcements page, scroll to the card for this announcement and highlight it briefly */
+function goToAnnouncement(key) {
+  document.querySelector('.tab-btn[data-tab="announcementsTab"]')?.click();
+  setTimeout(() => {
+    const card = [...document.querySelectorAll('#announcementsList .pa-card')].find(c => c.dataset.key === key);
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.remove('pa-flash'); void card.offsetWidth; card.classList.add('pa-flash');
+    setTimeout(() => card.classList.remove('pa-flash'), 3000);
+  }, 60);
 }
 function renderAgentNewAnnouncement() {
   const a = latestRecentAnnouncement();
@@ -2353,7 +2358,7 @@ function renderAgentNewAnnouncement() {
     <span class="ann-new-title">${esc(a.title)}</span>
     ${a.stamp ? `<span class="ann-new-date">${esc(a.stamp)}</span>` : ''}
     <span class="ann-new-go">View →</span></div>`;
-  const go = () => document.querySelector('.tab-btn[data-tab="announcementsTab"]')?.click();
+  const go = () => goToAnnouncement(a.key);
   const bar = el.firstElementChild;
   bar.addEventListener('click', go);
   bar.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
