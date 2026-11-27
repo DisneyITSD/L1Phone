@@ -1323,7 +1323,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
     <div class="schedule-container">
       <table id="misTable" class="nosort">
         <thead><tr>
-          <th>👤 OpenedBy</th><th>🎫 Incident</th><th>📂 OpenGroup</th><th>➡️ FirstAssign</th><th>➡️ SecondAssign</th><th>🏁 CloseGroup</th><th>🕒 ClosedTime</th><th>🧑‍💼 Supervisor</th>
+          <th>👤 Agent Name</th><th>🎫 Incident</th><th>📂 OpenGroup</th><th>➡️ FirstAssign</th><th>➡️ SecondAssign</th><th>🏁 CloseGroup</th><th>🕒 ClosedTime</th><th>🧑‍💼 Supervisor</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -1411,9 +1411,9 @@ const SHORT_NEEDS_APPROVAL = true;
    Paste the number after "gid=" from the LBPRR tab's address bar here (most reliable). Empty = find the tab by its name. */
 const LBPRR_GID = '1191914646';
 const LBPRR_URL = LBPRR_GID ? sheetUrl(LBPRR_GID) : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('LBPRR')}`;
-/* Misroutes tab: Incident | ClosedTime | BA Code | OpenGroup | CloseGroup | FirstAssign | SecondAssign | Misrouted? | OpenedBy.
+/* Misroutes tab: Incident | ClosedTime | BA Code | OpenGroup | CloseGroup | FirstAssign | SecondAssign | Misrouted? | OpenedBy | Agent Name.
    Paste the number after "gid=" from the Misroutes tab's address bar here (most reliable). Empty = find the tab by its name. */
-const MISROUTES_GID = '18012161';
+const MISROUTES_GID = '';
 const MISROUTES_URL = MISROUTES_GID ? sheetUrl(MISROUTES_GID) : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Misroutes')}`;
 const URLS = {
   pto: sheetUrl(1297010746),
@@ -1918,29 +1918,30 @@ const loadMetric = () => guard('metric', "Couldn't load the Performance Stack Ra
 
 /* =====================================================================
    MISROUTES (Misroutes tab)
-   Sheet columns: Incident | ClosedTime | BA Code | OpenGroup | CloseGroup | FirstAssign | SecondAssign | Misrouted? | OpenedBy
-   Shown as: OpenedBy | Incident | OpenGroup | FirstAssign | SecondAssign | CloseGroup | ClosedTime | Supervisor
-   The Supervisor is looked up from the roster by the OpenedBy name.
+   Sheet columns: Incident | ClosedTime | BA Code | OpenGroup | CloseGroup | FirstAssign | SecondAssign | Misrouted? | OpenedBy | Agent Name
+   Shown as: Agent Name | Incident | OpenGroup | FirstAssign | SecondAssign | CloseGroup | ClosedTime | Supervisor
+   The Supervisor is looked up from the roster by the Agent Name column (OpenedBy is ignored).
    ===================================================================== */
 let misrouteRows = [], misHasFlag = false;
+const misNorm = s => normName(String(s ?? '').replace(/\s*\(\s*\d+\s*\)\s*$/, ''));   // ignores a trailing (ID)
 const misKey = s => clean(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 const misDate = v => { const t = String(v ?? '').trim(), m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/); return m ? m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0') : normalizeDate(t); };
 const misYes = v => /^(y|yes|true|1|x|misrouted)\b/i.test(clean(v));
 const loadMisroutes = () => guard('misroutes', "Couldn't load the Misroutes tab", async () => {
   const rows = await fetchCSV(MISROUTES_URL, { raw: true });
-  const h = rows.findIndex(r => r.some(c => misKey(c) === 'incident') && r.some(c => misKey(c) === 'openedby'));
-  if (h < 0) throw new Error('no "Incident" / "OpenedBy" header found - check the tab is named Misroutes and that the sheet is shared');
+  const h = rows.findIndex(r => r.some(c => misKey(c) === 'incident') && r.some(c => misKey(c) === 'agentname'));
+  if (h < 0) throw new Error('no "Incident" / "Agent Name" header found - check the tab is named Misroutes and that the sheet is shared');
   const heads = rows[h].map(misKey), ix = k => heads.indexOf(k), g = (r, k) => ix(k) >= 0 ? clean(r[ix(k)]) : '';
   misHasFlag = ix('misrouted') >= 0;
   misrouteRows = rows.slice(h + 1).map(r => ({
-    openedBy: g(r, 'openedby'), incident: g(r, 'incident'), openGroup: g(r, 'opengroup'), first: g(r, 'firstassign'), second: g(r, 'secondassign'),
+    agent: g(r, 'agentname'), incident: g(r, 'incident'), openGroup: g(r, 'opengroup'), first: g(r, 'firstassign'), second: g(r, 'secondassign'),
     closeGroup: g(r, 'closegroup'), closed: g(r, 'closedtime'), date: misDate(g(r, 'closedtime')), mis: misYes(g(r, 'misrouted'))
-  })).filter(x => x.incident || x.openedBy);
+  })).filter(x => x.incident || x.agent);
 });
 function misRowsHtml(rows) {
   return rows.length ? rows.map(x => `
     <tr class="${supClass(x.supervisor)}" style="${supStyle(x.supervisor)}">
-      <td>${esc(x.openedBy) || '—'}</td>
+      <td>${esc(x.agent) || '—'}</td>
       <td>${esc(x.incident) || '—'}</td>
       <td>${esc(x.openGroup) || '—'}</td>
       <td>${esc(x.first) || '—'}</td>
@@ -1965,17 +1966,17 @@ function buildMisroutes() {
   const restricted = !!(AUTH && AUTH.restricted), sup = restricted ? ALL : misFillSup();
   const q = up($('misSearch').value), only = $('misFilter').value === 'yes';
   const bySup = misSupMap();
-  let rows = misrouteRows.map(x => ({ ...x, supervisor: bySup.get(normName(x.openedBy)) || '' }))
-    .filter(x => (!only || !misHasFlag || x.mis) && (!restricted || normName(x.openedBy) === normName(AUTH.name)));   // agents see only their own misroutes
+  let rows = misrouteRows.map(x => ({ ...x, supervisor: bySup.get(misNorm(x.agent)) || '' }))
+    .filter(x => (!only || !misHasFlag || x.mis) && (!restricted || misNorm(x.agent) === misNorm(AUTH.name)));   // agents see only their own misroutes
   const mSel = $('misMonth'), prevM = mSel.value || 'all';
   const months = [...new Set(rows.map(x => x.date.slice(0, 7)).filter(Boolean))].sort().reverse();
   mSel.innerHTML = '<option value="all">All months</option>' + months.map(m => `<option value="${m}">${new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>`).join('');
   mSel.value = months.includes(prevM) ? prevM : 'all';
-  rows = rows.filter(x => (mSel.value === 'all' || x.date.slice(0, 7) === mSel.value) && (sup === ALL || x.supervisor === sup) && (!q || up(x.openedBy).includes(q) || up(x.incident).includes(q)))
-    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.openedBy.localeCompare(b.openedBy));
+  rows = rows.filter(x => (mSel.value === 'all' || x.date.slice(0, 7) === mSel.value) && (sup === ALL || x.supervisor === sup) && (!q || up(x.agent).includes(q) || up(x.incident).includes(q)))
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.agent.localeCompare(b.agent));
   $('misTable').tBodies[0].innerHTML = misRowsHtml(rows);
   $('misCount').textContent = rows.length;
-  $('misAgents').textContent = new Set(rows.map(x => normName(x.openedBy))).size;
+  $('misAgents').textContent = new Set(rows.map(x => misNorm(x.agent))).size;
 }
 
 const addDays = (dateStr, n) => { const d = parseYMD(dateStr); d.setDate(d.getDate() + n); return ymd(d); };
