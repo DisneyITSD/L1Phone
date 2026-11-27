@@ -10,6 +10,11 @@
    image   : picture path, e.g. 'announcements/anton-level2.jpg'
    title   : headline shown on the card
    message : optional extra text under the picture ('' for none)
+   posted  : the day it was posted, YYYY-MM-DD. The red "NEW" alert (top of Agent
+             Summary + the pill on the Announcements menu) shows for 3 days from
+             this date. If left out, the alert uses "start" instead. If both are
+             blank, the announcement still shows in the Announcements tab but
+             there is no NEW alert.
    start   : first day it shows, YYYY-MM-DD   ('' = right away)
    end     : last day it shows,  YYYY-MM-DD   ('' = never expires)
    ===================================================================== */
@@ -18,20 +23,23 @@ const PICTURE_ANNOUNCEMENTS = [
     image:   'announcements/BackgroundNoise.jpg',
     title:   'WFH Expectations!',
     message: 'Background Noise and Audio Quality',
+    posted:  '',
     start:   '',
     end:     ''
   },
-   {
+  {
     image:   'announcements/NewL2Specialist.png',
     title:   'Congratulations to our New L2 Specialist!',
     message: 'Celebrating your advancement to Level 2.',
+    posted:  '',
     start:   '',
     end:     ''
   },
-   {
+  {
     image:   'announcements/CWDNov30.png',
     title:   '📢 Attendance Advisory: Critical Working Day',
     message: 'Please be advised that Monday, November 30, 2026 (Bonifacio Day) has been designated as a Critical Working Day due to the holiday falling immediately after a weekend.',
+    posted:  '2026-11-27',
     start:   '2026-11-27',
     end:     '2026-12-01'
   }
