@@ -573,6 +573,15 @@ body{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;background:var(
 .pa-box{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
 .pa-box img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 
+/* New-announcement alert: slim bar at the top of Agent Summary + a NEW pill on the Announcements menu item (for ANN_FLASH_DAYS days after posting) */
+.ann-new{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:8px 12px;background:color-mix(in srgb,var(--red) 8%,var(--surface));border:1px solid color-mix(in srgb,var(--red) 35%,transparent);border-left:4px solid var(--red);border-radius:10px;font-size:13px;cursor:pointer}
+.ann-new-badge,.nav-new{padding:2px 8px;border-radius:999px;background:var(--red);color:#fff;font-size:10.5px;font-weight:700;animation:annPulse 1.2s ease-in-out infinite}
+.nav-new{margin-left:auto}
+.ann-new-title{flex:1;min-width:0;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ann-new-date{font-size:12px;color:var(--muted);white-space:nowrap}
+.ann-new-go{font-size:12px;font-weight:600;color:var(--blue);white-space:nowrap}
+@keyframes annPulse{0%,100%{opacity:1}50%{opacity:.45}}
+
 /* Sidebar: light, quiet, collapsible groups, forms in a bottom menu */
 .side{position:sticky;top:0;height:100vh;width:var(--side);flex:none;display:flex;flex-direction:column;padding:20px 10px 12px;background:var(--surface);border-right:1px solid var(--line);color:#374151;overflow:visible;z-index:70}
 .side .brand{padding:2px 10px 14px;display:flex;align-items:center;gap:10px}
@@ -1128,6 +1137,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
 <!-- ============ SUPERVISOR SUMMARY ============ -->
 <!-- ============ AGENT SUMMARY (one agent: attendance, stack ranking, actual scores) ============ -->
 <section class="tab-panel" id="agentSumTab" hidden>
+  <div id="agentNewAnnouncement" hidden></div>
   <div class="view-hint">👤 One agent at a glance: attendance, QA, points, the Overall Metric Scorecard and the stack ranking.<br>Pick the agent in the schedule at the top, then tick one or more months (or Year to date) in the Month box under “How attendance is calculated”; everything below is calculated automatically.</div>
   <div id="agSumSchedule">
     <h3 class="sum-h" style="margin-top:4px">📅 Schedule</h3>
@@ -2134,6 +2144,7 @@ function renderAll() {
   loadSup();
   renderHighAnnouncements();
   renderLatestAnnouncement();
+  renderAgentNewAnnouncement();
   TAB_RENDERERS[activeTab]?.();
 }
 
@@ -2301,6 +2312,51 @@ function renderLatestAnnouncement() {
     strip.addEventListener('click', go);
     strip.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
+}
+
+/* ---------- New-announcement alert (top of Agent Summary + NEW pill on the menu) ----------
+   Shows the single most recent announcement while it is within ANN_FLASH_DAYS days of being posted.
+   Looks at both the picture announcements (posted date = "posted" / "date" / "start" in announcements.js)
+   and the sheet announcements (posted date = Timestamp). Only active announcements are considered. */
+const ANN_FLASH_DAYS = 3;
+function latestRecentAnnouncement() {
+  const todayStr = ymd(estNow()), today = parseYMD(todayStr);
+  const live = (s, e) => (!s || s <= todayStr) && (!e || e >= todayStr);
+  const cands = [];
+  pictureAnnouncements(false).forEach(a => {
+    const d = normalizeDate(a.posted || a.date || a.start);
+    if (d) cands.push({ posted: parseYMD(d), title: a.title, message: a.message, image: a.image });
+  });
+  announcementList.forEach(a => {
+    if (!(a['Announcement Title'] || '').trim()) return;
+    if (!live(normalizeDate(a['Start Date']), normalizeDate(a['End Date']))) return;
+    const t = new Date(a.Timestamp), d = isNaN(t) ? normalizeDate(a['Start Date']) : ymd(t);
+    if (d) cands.push({ posted: isNaN(t) ? parseYMD(d) : t, day: parseYMD(d), title: a['Announcement Title'], message: a['Announcement Message'], stamp: isNaN(t) ? '' : fmtStamp(a.Timestamp) });
+  });
+  const recent = cands.map(c => ({ ...c, age: Math.round((today - (c.day || new Date(c.posted.getFullYear(), c.posted.getMonth(), c.posted.getDate()))) / 86400000) }))
+    .filter(c => c.age >= 0 && c.age <= ANN_FLASH_DAYS)
+    .sort((a, b) => b.posted - a.posted);
+  return recent[0] || null;
+}
+function renderAgentNewAnnouncement() {
+  const a = latestRecentAnnouncement();
+  /* NEW pill on the Announcements menu item */
+  document.querySelectorAll('.tab-btn[data-tab="announcementsTab"]').forEach(btn => {
+    btn.querySelector('.nav-new')?.remove();
+    if (a) btn.insertAdjacentHTML('beforeend', '<span class="nav-new">NEW</span>');
+  });
+  const el = $('agentNewAnnouncement'); if (!el) return;
+  if (!a) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="ann-new" role="button" tabindex="0">
+    <span class="ann-new-badge">NEW</span><span>📢</span>
+    <span class="ann-new-title">${esc(a.title)}</span>
+    ${a.stamp ? `<span class="ann-new-date">${esc(a.stamp)}</span>` : ''}
+    <span class="ann-new-go">View →</span></div>`;
+  const go = () => document.querySelector('.tab-btn[data-tab="announcementsTab"]')?.click();
+  const bar = el.firstElementChild;
+  bar.addEventListener('click', go);
+  bar.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
 }
 
 function renderHighAnnouncements() {
