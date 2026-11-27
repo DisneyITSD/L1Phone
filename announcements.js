@@ -26,6 +26,13 @@ const PICTURE_ANNOUNCEMENTS = [
     title:   'Congratulations to our New L2 Specialist!',
     message: 'Celebrating your advancement to Level 2.',
     start:   '',
-    end:     '2026-12-13'
+    end:     ''
+  },
+   {
+    image:   'Critical Working Day - November 30.png',
+    title:   '📢 Attendance Advisory: Critical Working Day',
+    message: 'Please be advised that Monday, November 30, 2026 (Bonifacio Day) has been designated as a Critical Working Day due to the holiday falling immediately after a weekend.',
+    start:   '',
+    end:     ''
   }
 ];
