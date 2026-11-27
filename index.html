@@ -1442,6 +1442,7 @@ html[data-theme=dark] #dataUpdateNote .du-name{color:#cfdcff}
     </div>
     <select id="metricSupervisor" onchange="buildMetric()"><option>All Supervisors</option></select>
     <input type="text" id="metricSearch" placeholder="🔍 Search Agent..." onkeyup="buildMetric()">
+    <label id="metricFullWrap" title="With several months ticked (e.g. Year to date), hide agents who are missing any of those months" style="display:inline-flex;align-items:center;gap:6px;padding:0 4px;font-size:14px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="metricFullOnly" onchange="buildMetric()"> Full period only</label>
     <button class="blue" onclick="refreshAttendanceData(true)">↻ Refresh</button>
   </div>
   <div class="daily-summary">
@@ -3768,6 +3769,7 @@ function buildMetric() {
   metricSel = new Set([...metricSel].filter(m => months.includes(m)));
   if (!metricSel.size && months.length) metricSel.add(months[months.length - 1]);
   $('metricMonthWrap').hidden = !months.length;
+  $('metricFullWrap').style.display = metricSel.size > 1 ? 'inline-flex' : 'none';
   renderMetricMonthPicker(months);
   renderKpiCards();
 
@@ -3781,7 +3783,8 @@ function buildMetric() {
   if (sups.includes(prevSup)) supSel.value = prevSup;
   const sup = supSel.value, q = up($('metricSearch').value);
 
-  const rows = data.filter(r => (sup === ALL || supOf(r) === sup) && (!q || up(r[I.agent]).includes(q)));
+  const fullOnly = !!$('metricFullOnly')?.checked && metricSel.size > 1;     // keep only agents who have a row for every ticked month
+  const rows = data.filter(r => (sup === ALL || supOf(r) === sup) && (!fullOnly || (r._n || 0) >= metricSel.size) && (!q || up(r[I.agent]).includes(q)));
   const maxOf = metricHeads.map((_, i) => metricMax(i));
 
   /* Top 3 podium (always by TOTAL, whatever column the table is sorted by) */
