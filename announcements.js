@@ -32,7 +32,7 @@ const PICTURE_ANNOUNCEMENTS = [
     image:   'announcements/CWDNov30.png',
     title:   '📢 Attendance Advisory: Critical Working Day',
     message: 'Please be advised that Monday, November 30, 2026 (Bonifacio Day) has been designated as a Critical Working Day due to the holiday falling immediately after a weekend.',
-    start:   '',
-    end:     ''
+    start:   '2026-11-27',
+    end:     '2026-12-01'
   }
 ];
